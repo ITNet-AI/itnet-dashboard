@@ -163,15 +163,12 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
           detail={spentBefore > 0 ? spendChange(spentNow, spentBefore, monthName(lastMonth)) : "First month on record"}
           href="/money"
         />
-        <Stat label="Subscriptions" value={moneyRound(runRate)} detail="a month" href="/money" />
-        {nextRenewal ? (
-          <Stat
-            label="Next renewal"
-            value={money(Number(nextRenewal.amount))}
-            detail={`${nextRenewal.name}, ${dueInfo(nextRenewal.upcoming!, today).label.toLowerCase()}`}
-            href="/money"
-          />
-        ) : null}
+        <Stat
+          label="Subscriptions"
+          value={moneyRound(runRate)}
+          detail={nextRenewal ? `a month, next ${nextRenewal.name} ${dueInfo(nextRenewal.upcoming!, today).label.toLowerCase()}` : "a month"}
+          href="/money"
+        />
       </StatRow>
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
