@@ -98,6 +98,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          mentions: string[]
           project_id: string | null
           task_id: string | null
         }
@@ -106,6 +107,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          mentions?: string[]
           project_id?: string | null
           task_id?: string | null
         }
@@ -114,6 +116,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          mentions?: string[]
           project_id?: string | null
           task_id?: string | null
         }

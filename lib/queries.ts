@@ -55,7 +55,7 @@ export async function getTaskDetail(id: string) {
       .maybeSingle(),
     supabase
       .from("comments")
-      .select(`id, body, created_at, author:profiles(${PERSON})`)
+      .select(`id, body, mentions, created_at, author:profiles(${PERSON})`)
       .eq("task_id", id)
       .order("created_at"),
   ]);
@@ -63,6 +63,20 @@ export async function getTaskDetail(id: string) {
 }
 
 export type TaskDetail = NonNullable<Awaited<ReturnType<typeof getTaskDetail>>>;
+
+/** Comments that tag this person, for "Mentioned you" on Home. */
+export async function listMentions(personId: string, limit = 6) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("comments")
+    .select(`id, body, created_at, author:profiles(${PERSON}), task:tasks(id, title, project_id), project:projects(id, name)`)
+    .contains("mentions", [personId])
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export type MentionRow = Awaited<ReturnType<typeof listMentions>>[number];
 
 export async function listActivity(limit = 30, projectId?: string) {
   const supabase = await createClient();

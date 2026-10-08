@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ActivityFeed } from "@/components/home/activity-feed";
+import { Mentions } from "@/components/home/mentions";
 import { OwnerHome } from "@/components/home/owner-home";
 import { TaskList } from "@/components/tasks/task-list";
 import { Due } from "@/components/ui/badges";
@@ -8,7 +9,7 @@ import { Empty, PageHeader, Section } from "@/components/ui/page";
 import { getCurrentUser } from "@/lib/auth";
 import { daysBetween, todayISO } from "@/lib/dates";
 import { firstName, todayHeading } from "@/lib/format";
-import { listActivity, listTasks } from "@/lib/queries";
+import { listActivity, listMentions, listTasks } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { recordHomeVisit } from "@/lib/visits";
 
@@ -16,21 +17,20 @@ export const metadata: Metadata = { title: "Home" };
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  if (user.is_admin) {
-    const digestFrom = await recordHomeVisit(user);
-    return <OwnerHome user={user} digestFrom={digestFrom} />;
-  }
-  return <MemberHome user={user} />;
+  const digestFrom = await recordHomeVisit(user);
+  if (user.is_admin) return <OwnerHome user={user} digestFrom={digestFrom} />;
+  return <MemberHome user={user} digestFrom={digestFrom} />;
 }
 
 /** Home for members: their own work first, then what the team is doing. */
-async function MemberHome({ user }: { user: { id: string; full_name: string; email: string } }) {
+async function MemberHome({ user, digestFrom }: { user: { id: string; full_name: string; email: string }; digestFrom: string }) {
   const supabase = await createClient();
   const today = todayISO();
 
-  const [mine, activity, { data: leading }] = await Promise.all([
+  const [mine, activity, mentions, { data: leading }] = await Promise.all([
     listTasks({ assigneeId: user.id }),
     listActivity(25),
+    listMentions(user.id, 5),
     supabase
       .from("projects")
       .select("id, name, due_date, tasks(status, due_date)")
@@ -90,9 +90,12 @@ async function MemberHome({ user }: { user: { id: string; full_name: string; ema
             </Section>
           ) : null}
         </div>
-        <Section title="Activity">
-          {activity.length ? <ActivityFeed items={activity} empty="" /> : <Empty>When people add or move tasks, it shows up here.</Empty>}
-        </Section>
+        <div className="flex min-w-0 flex-col gap-10">
+          <Mentions items={mentions} newSince={digestFrom} />
+          <Section title="Activity">
+            {activity.length ? <ActivityFeed items={activity} empty="" /> : <Empty>When people add or move tasks, it shows up here.</Empty>}
+          </Section>
+        </div>
       </div>
     </>
   );

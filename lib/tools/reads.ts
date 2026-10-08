@@ -79,7 +79,7 @@ export const getProject = defineTool({
       supabase.from("tasks").select(TASK).eq("project_id", input.id).order("status").order("position"),
       supabase
         .from("comments")
-        .select(`id, body, created_at, author:profiles(${PERSON})`)
+        .select(`id, body, mentions, created_at, author:profiles(${PERSON})`)
         .eq("project_id", input.id)
         .order("created_at"),
     ]);
@@ -127,11 +127,33 @@ export const getTask = defineTool({
   async run({ supabase }, input) {
     const [task, comments] = await Promise.all([
       supabase.from("tasks").select(TASK).eq("id", input.id).maybeSingle(),
-      supabase.from("comments").select(`id, body, created_at, author:profiles(${PERSON})`).eq("task_id", input.id).order("created_at"),
+      supabase.from("comments").select(`id, body, mentions, created_at, author:profiles(${PERSON})`).eq("task_id", input.id).order("created_at"),
     ]);
     if (task.error || comments.error) return fail((task.error ?? comments.error)!.message);
     if (!task.data) return fail("Task not found.");
     return ok({ ...task.data, comments: comments.data });
+  },
+});
+
+export const listMentions = defineTool({
+  name: "list_mentions",
+  description:
+    "Comments that tag a person, newest first, with the task or project they're on. Defaults to you. Use it to remind someone what they've been asked.",
+  readOnly: true,
+  input: z.object({
+    person_id: id.optional().describe("Defaults to you"),
+    since: z.iso.datetime({ offset: true }).optional().describe("ISO timestamp; only comments after it"),
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+  async run({ supabase, user }, input) {
+    let q = supabase
+      .from("comments")
+      .select(`id, body, created_at, author:profiles(${PERSON}), task:tasks(id, title, status, project_id), project:projects(id, name)`)
+      .contains("mentions", [input.person_id ?? user.id]);
+    if (input.since) q = q.gt("created_at", input.since);
+    const { data, error } = await q.order("created_at", { ascending: false }).limit(input.limit);
+    if (error) return fail(error.message);
+    return ok(data);
   },
 });
 

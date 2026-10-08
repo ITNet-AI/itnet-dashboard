@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActivityFeed } from "@/components/home/activity-feed";
+import { Mentions } from "@/components/home/mentions";
 import { TaskList } from "@/components/tasks/task-list";
 import { PersonName } from "@/components/ui/avatar";
 import { Due } from "@/components/ui/badges";
@@ -9,7 +10,7 @@ import { spendInMonth, summarize } from "@/lib/costs";
 import { addDays, daysBetween, monthBounds, todayISO } from "@/lib/dates";
 import { displayName, dueInfo, firstName, money, monthName, moneyRound, sinceLabel, todayHeading } from "@/lib/format";
 import { QUIET_DAYS, projectHealth, type Health } from "@/lib/health";
-import { PERSON, TASK_FIELDS, listTasks, type ActivityRow } from "@/lib/queries";
+import { PERSON, TASK_FIELDS, listMentions, listTasks, type ActivityRow } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 type Me = { id: string; full_name: string; email: string };
@@ -45,7 +46,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
   const today = todayISO();
   const lastMonth = addDays(monthBounds(today).start, -1);
 
-  const [{ data: projects }, { data: openTasks }, { data: costs }, { data: recent }, { data: digest }, mine] = await Promise.all([
+  const [{ data: projects }, { data: openTasks }, { data: costs }, { data: recent }, { data: digest }, mine, mentions] = await Promise.all([
     supabase
       .from("projects")
       .select(`id, name, due_date, client:clients(name), lead:profiles(${PERSON}), tasks(status, due_date)`)
@@ -67,6 +68,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
       .order("created_at", { ascending: false })
       .limit(200),
     listTasks({ assigneeId: user.id }),
+    listMentions(user.id, 5),
   ]);
 
   // Last activity per project, for spotting quiet ones.
@@ -210,6 +212,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
         </div>
 
         <div className="flex min-w-0 flex-col gap-10">
+          <Mentions items={mentions} newSince={digestFrom} />
           <Digest items={changes} since={since} />
           {mine.length ? (
             <Section title="Your tasks" count={mine.length} action={<Link href="/tasks" className="text-ui text-ink-2 hover:text-ink">All</Link>}>

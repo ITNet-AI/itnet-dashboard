@@ -134,7 +134,7 @@ export function TaskDialog({
         <h3 className="text-ui font-semibold">
           Comments{comments.length ? <span className="num ml-2 font-normal text-ink-3">{comments.length}</span> : null}
         </h3>
-        <Comments comments={comments} taskId={task.id} currentUserId={currentUserId} isAdmin={isAdmin} />
+        <Comments comments={comments} people={people} taskId={task.id} currentUserId={currentUserId} isAdmin={isAdmin} />
       </div>
     </Dialog>
   );

@@ -42,15 +42,17 @@ export function Section({
   action,
   children,
   className = "",
+  id,
 }: {
   title: string;
   count?: number;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
   return (
-    <section className={`min-w-0 ${className}`}>
+    <section id={id} className={`min-w-0 scroll-mt-6 ${className}`}>
       <div className="flex h-8 items-center justify-between gap-4 border-b border-line">
         <h2 className="text-ui font-semibold">
           {title}

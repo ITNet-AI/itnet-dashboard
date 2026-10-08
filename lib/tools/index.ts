@@ -4,7 +4,7 @@ import { createClient, deleteClient, updateClient } from "./clients";
 import { createCost, deleteCost, updateCost } from "./costs";
 import type { Tool } from "./define";
 import { createProject, deleteProject, updateProject } from "./projects";
-import { getProject, getTask, listActivity, listClients, listCosts, listPeople, listProjects, listTasks, whoami } from "./reads";
+import { getProject, getTask, listActivity, listClients, listCosts, listMentions, listPeople, listProjects, listTasks, whoami } from "./reads";
 import { createTask, deleteTask, moveTask, setTaskDone, updateTask } from "./tasks";
 import { inviteMember, resendInvite, setAdmin } from "./team";
 
@@ -19,6 +19,7 @@ export const tools: Tool[] = [
   getProject,
   listTasks,
   getTask,
+  listMentions,
   listClients,
   listActivity,
   listCosts,

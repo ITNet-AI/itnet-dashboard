@@ -40,7 +40,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     listTasks({ projectId: id, includeDone: true }),
     listPeople(),
     listClientOptions(),
-    supabase.from("comments").select(`id, body, created_at, author:profiles(${PERSON})`).eq("project_id", id).order("created_at"),
+    supabase.from("comments").select(`id, body, mentions, created_at, author:profiles(${PERSON})`).eq("project_id", id).order("created_at"),
     listActivity(12, id),
     taskId && /^[0-9a-f-]{36}$/i.test(taskId) ? getTaskDetail(taskId) : Promise.resolve(null),
   ]);
@@ -111,9 +111,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       <p className="pt-2 text-meta text-ink-3">Drag cards between columns. Press C to add a task.</p>
 
       <div className="grid grid-cols-1 gap-10 pt-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Section title="Discussion" count={comments?.length ?? 0}>
+        <Section id="discussion" title="Discussion" count={comments?.length ?? 0}>
           <div className="pt-4">
-            <Comments comments={comments ?? []} projectId={project.id} currentUserId={user.id} isAdmin={user.is_admin} />
+            <Comments comments={comments ?? []} people={people} projectId={project.id} currentUserId={user.id} isAdmin={user.is_admin} />
           </div>
         </Section>
         <div className="flex min-w-0 flex-col gap-10">
