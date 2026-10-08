@@ -68,12 +68,22 @@ It asks for the new password at a hidden prompt and sets it directly with the se
 
 ## Database
 
-The schema lives in `supabase/migrations/` and every file there has been applied to the project.
-After changing it, regenerate types:
+The project is in Supabase's Mumbai region (`ap-south-1`), the closest to the team. The schema lives in
+`supabase/migrations/`. To apply new migrations, link once and push:
+
+```
+supabase link --project-ref pytuwcbtylectoipbjfw
+supabase db push
+supabase db push --include-seed      # also loads the demo data from supabase/demo-data.sql
+```
+
+After changing the schema, regenerate types:
 
 ```
 supabase gen types typescript --project-id pytuwcbtylectoipbjfw > lib/database.types.ts
 ```
+
+`supabase/demo-data-remove.sql` deletes exactly the demo rows when you want a clean slate.
 
 ## Layout
 
