@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useTransition, type ReactNode } from "react";
 import { setTaskDone } from "@/actions/tasks";
 import { PersonName } from "@/components/ui/avatar";
 import { Due } from "@/components/ui/badges";
@@ -36,12 +36,14 @@ export function TaskList({
   showAssignee = false,
   showProject = true,
   empty,
+  emptyAction,
   grouped = true,
 }: {
   tasks: TaskRow[];
   showAssignee?: boolean;
   showProject?: boolean;
   empty: string;
+  emptyAction?: ReactNode;
   grouped?: boolean;
 }) {
   const [optimistic, setOptimistic] = useOptimistic(tasks, (state, change: { id: string; done: boolean }) =>
@@ -54,7 +56,7 @@ export function TaskList({
       await setTaskDone(id, done);
     });
 
-  if (!optimistic.length) return <Empty>{empty}</Empty>;
+  if (!optimistic.length) return <Empty action={emptyAction}>{empty}</Empty>;
 
   const groups: Group[] = grouped ? groupByDue(optimistic) : [{ key: "all", label: "", tasks: optimistic }];
   return (
@@ -89,9 +91,14 @@ function Row({
   onToggle: (id: string, done: boolean) => void;
 }) {
   const done = task.status === "done";
+  const late = !done && !!task.due_date && task.due_date < todayISO();
   const id = `done-${task.id}`;
   return (
-    <li className="group flex min-h-10 items-center gap-3 border-b border-line py-1.5 last:border-b-0">
+    <li
+      className={`group flex min-h-10 items-center gap-3 border-b border-line py-1.5 last:border-b-0 ${
+        late ? "border-l-2 border-l-crit pl-3" : ""
+      }`}
+    >
       <input
         id={id}
         type="checkbox"

@@ -73,7 +73,15 @@ export function CostTables({ costs, projects }: { costs: DescribedCost[]; projec
             </div>
           </div>
         ) : (
-          <Empty>No subscriptions yet. Add the tools the team pays for so renewals show up on Home.</Empty>
+          <Empty
+            action={
+              <Button variant="primary" onClick={() => d.setAdding("recurring")}>
+                Add a subscription
+              </Button>
+            }
+          >
+            No subscriptions yet. Add the tools the team pays for so renewals show up on Home.
+          </Empty>
         )}
       </Section>
 
@@ -108,7 +116,15 @@ export function CostTables({ costs, projects }: { costs: DescribedCost[]; projec
             </div>
           </div>
         ) : (
-          <Empty>No one-time expenses recorded.</Empty>
+          <Empty
+            action={
+              <Button variant="primary" onClick={() => d.setAdding("one_time")}>
+                Record an expense
+              </Button>
+            }
+          >
+            No one-time expenses recorded.
+          </Empty>
         )}
       </Section>
 

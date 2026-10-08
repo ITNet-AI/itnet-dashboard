@@ -11,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/lib/auth";
 import { PERSON, listClientOptions, listPeople } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
+import { todayISO } from "@/lib/dates";
+import { projectHealth } from "@/lib/health";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -29,7 +31,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
     supabase.from("clients").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("projects")
-      .select(`id, name, status, due_date, lead:profiles(${PERSON}), tasks(status)`)
+      .select(`id, name, status, due_date, lead:profiles(${PERSON}), tasks(status, due_date)`)
       .eq("client_id", id)
       .order("status")
       .order("due_date", { nullsFirst: false }),
@@ -38,6 +40,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
   ]);
   if (!client) notFound();
   const list = projects ?? [];
+  const today = todayISO();
   const cols = "grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_110px_96px_88px]";
 
   return (
@@ -90,7 +93,11 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                     <span className="min-w-0 text-ui">
                       <PersonName person={p.lead} />
                     </span>
-                    <Progress done={p.tasks.filter((t) => t.status === "done").length} total={p.tasks.length} />
+                    <Progress
+                      done={p.tasks.filter((t) => t.status === "done").length}
+                      total={p.tasks.length}
+                      tone={p.status === "active" ? projectHealth(p, today).health : "accent"}
+                    />
                     <span className="text-ui">{p.due_date ? <Due date={p.due_date} done={p.status === "done"} /> : <span className="text-ink-3">None</span>}</span>
                     <ProjectStatus status={p.status} />
                   </Link>
@@ -99,7 +106,9 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
             </ul>
           </div>
         ) : (
-          <Empty>No projects for {client.name} yet.</Empty>
+          <Empty action={<ProjectForm people={people} clients={clients} defaultClientId={client.id} currentUserId={user.id} trigger="Start a project" />}>
+            No projects for {client.name} yet.
+          </Empty>
         )}
       </Section>
 

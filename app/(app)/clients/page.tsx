@@ -20,7 +20,7 @@ export default async function ClientsPage() {
       {clients.length ? (
         <div className="overflow-x-auto">
           <div className="min-w-[560px]">
-            <div className={`grid ${cols} gap-4 border-b border-line py-2 text-meta text-ink-3`}>
+            <div className={`colhead grid ${cols} gap-4 border-b border-line py-2`}>
               <span>Client</span>
               <span>Contact</span>
               <span className="text-right">Active projects</span>
@@ -44,7 +44,7 @@ export default async function ClientsPage() {
           </div>
         </div>
       ) : (
-        <Empty>No clients yet. Add one, then attach projects to it.</Empty>
+        <Empty action={<ClientForm />}>No clients yet. Add one, then attach projects to it.</Empty>
       )}
     </>
   );

@@ -54,9 +54,9 @@ export function Section({
   return (
     <section id={id} className={`min-w-0 scroll-mt-6 ${className}`}>
       <div className="flex h-8 items-center justify-between gap-4 border-b border-line">
-        <h2 className="text-ui font-semibold">
+        <h2 className="font-display text-[15px] font-bold tracking-tight">
           {title}
-          {count !== undefined ? <span className="num ml-2 font-normal text-ink-3">{count}</span> : null}
+          {count !== undefined ? <span className="num ml-2 font-sans text-ui font-normal text-ink-3">{count}</span> : null}
         </h2>
         {action}
       </div>
@@ -65,8 +65,15 @@ export function Section({
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <p className="py-6 text-ui text-ink-3">{children}</p>;
+/** With an action it becomes a nudge: a dashed card with the next thing to do. Without, a quiet line. */
+export function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  if (!action) return <p className="py-6 text-ui text-ink-3">{children}</p>;
+  return (
+    <div className="my-4 flex flex-col items-center gap-3 rounded-dlg border border-dashed border-line-2 px-5 py-8 text-center">
+      <p className="max-w-[40ch] text-balance text-body text-ink-2">{children}</p>
+      {action}
+    </div>
+  );
 }
 
 /** Tabs that are just links, so the filter lives in the URL. */

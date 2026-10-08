@@ -5,7 +5,9 @@ import { Mentions } from "@/components/home/mentions";
 import { OwnerHome } from "@/components/home/owner-home";
 import { TaskList } from "@/components/tasks/task-list";
 import { Due } from "@/components/ui/badges";
+import { buttonClass } from "@/components/ui/button";
 import { Empty, PageHeader, Section } from "@/components/ui/page";
+import { Stat, StatRow } from "@/components/ui/stats";
 import { getCurrentUser } from "@/lib/auth";
 import { daysBetween, todayISO } from "@/lib/dates";
 import { firstName, todayHeading } from "@/lib/format";
@@ -39,15 +41,10 @@ async function MemberHome({ user, digestFrom }: { user: { id: string; full_name:
       .order("due_date", { ascending: true, nullsFirst: false }),
   ]);
 
-  const dueThisWeek = mine.filter((t) => t.due_date && daysBetween(today, t.due_date) <= 7).length;
   const overdue = mine.filter((t) => t.due_date && t.due_date < today).length;
-  const summary = [
-    mine.length ? `${mine.length} open ${mine.length === 1 ? "task" : "tasks"} on your plate` : "Nothing on your plate",
-    dueThisWeek ? `${dueThisWeek} due this week` : null,
-    overdue ? `${overdue} overdue` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const dueThisWeek = mine.filter((t) => t.due_date && t.due_date >= today && daysBetween(today, t.due_date) <= 7).length;
+  const lead = leading ?? [];
+  const leadLate = lead.filter((p) => p.tasks.some((t) => t.status !== "done" && t.due_date && t.due_date < today)).length;
 
   return (
     <>
@@ -55,19 +52,41 @@ async function MemberHome({ user, digestFrom }: { user: { id: string; full_name:
         title={todayHeading()}
         meta={
           <p className="text-body text-ink-2">
-            Hi {firstName(user)}. {summary}.
+            Hi {firstName(user)}. {mine.length ? "Here is where you stand." : "Nothing on your plate."}
           </p>
         }
       />
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-10">
+      <StatRow>
+        <Stat label="Open tasks" value={mine.length} detail="assigned to you" href="/tasks" />
+        <Stat label="Due this week" value={dueThisWeek} tone={dueThisWeek ? "warn" : "ink"} detail="including today" href="/tasks" />
+        <Stat label="Overdue" value={overdue} tone={overdue ? "crit" : "good"} detail={overdue ? "needs a new date or a push" : "nothing late"} href="/tasks" />
+        {lead.length ? (
+          <Stat
+            label="Projects you lead"
+            value={lead.length}
+            tone={leadLate ? "crit" : "ink"}
+            detail={leadLate ? `${leadLate} with late tasks` : "all on track"}
+            href="#leading"
+          />
+        ) : null}
+      </StatRow>
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-12">
           <Section title="Your tasks" count={mine.length} action={<Link href="/tasks" className="text-ui text-ink-2 hover:text-ink">All tasks</Link>}>
-            <TaskList tasks={mine.slice(0, 14)} empty="Nothing assigned to you right now." />
+            <TaskList
+              tasks={mine.slice(0, 14)}
+              empty="Nothing assigned to you right now. Pick something up from a project board."
+              emptyAction={
+                <Link href="/projects" className={buttonClass("primary")}>
+                  Browse projects
+                </Link>
+              }
+            />
           </Section>
-          {leading?.length ? (
-            <Section title="Projects you lead" count={leading.length}>
+          {lead.length ? (
+            <Section id="leading" title="Projects you lead" count={lead.length}>
               <ul>
-                {leading.map((p) => {
+                {lead.map((p) => {
                   const open = p.tasks.filter((t) => t.status !== "done");
                   const late = open.filter((t) => t.due_date && t.due_date < today).length;
                   return (
@@ -90,7 +109,7 @@ async function MemberHome({ user, digestFrom }: { user: { id: string; full_name:
             </Section>
           ) : null}
         </div>
-        <div className="flex min-w-0 flex-col gap-10">
+        <div className="flex min-w-0 flex-col gap-12">
           <Mentions items={mentions} newSince={digestFrom} />
           <Section title="Activity">
             {activity.length ? <ActivityFeed items={activity} empty="" /> : <Empty>When people add or move tasks, it shows up here.</Empty>}

@@ -6,6 +6,7 @@ import { PersonName } from "@/components/ui/avatar";
 import { Due } from "@/components/ui/badges";
 import { Empty, PageHeader, Section } from "@/components/ui/page";
 import { Progress } from "@/components/ui/progress";
+import { Stat, StatRow } from "@/components/ui/stats";
 import { spendInMonth, summarize } from "@/lib/costs";
 import { addDays, daysBetween, monthBounds, todayISO } from "@/lib/dates";
 import { displayName, dueInfo, firstName, money, monthName, moneyRound, sinceLabel, todayHeading } from "@/lib/format";
@@ -32,10 +33,10 @@ const TAG_TONE: Record<Attention["tag"], string> = {
   Unassigned: "bg-sunk text-ink-2",
 };
 
-const HEALTH: Record<Health, { label: string; cls: string }> = {
-  late: { label: "Late", cls: "text-crit" },
-  at_risk: { label: "At risk", cls: "text-warn" },
-  on_track: { label: "On track", cls: "text-good" },
+const HEALTH: Record<Health, { label: string; cls: string; edge: string }> = {
+  late: { label: "Late", cls: "text-crit", edge: "border-l-crit" },
+  at_risk: { label: "At risk", cls: "text-warn", edge: "border-l-warn" },
+  on_track: { label: "On track", cls: "text-good", edge: "border-l-good" },
 };
 
 const ATTENTION_LIMIT = 8;
@@ -124,6 +125,8 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
   const nextRenewal = renewals[0];
   const since = sinceLabel(digestFrom);
   const changes = digest ?? [];
+  const lateProjects = rows.filter((r) => r.health === "late").length;
+  const riskProjects = rows.filter((r) => r.health === "at_risk").length;
 
   return (
     <>
@@ -139,10 +142,41 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
           </p>
         }
       />
+      <StatRow>
+        <Stat
+          label="Needs you"
+          value={attention.length}
+          tone={attention.length ? "crit" : "good"}
+          detail={attention.length ? "Late, overdue, unassigned, renewing" : "All clear"}
+          href="#attention"
+        />
+        <Stat
+          label="Active projects"
+          value={rows.length}
+          detail={lateProjects ? `${lateProjects} late` : riskProjects ? `${riskProjects} at risk` : "All on track"}
+          tone={lateProjects ? "crit" : riskProjects ? "warn" : "ink"}
+          href="/projects"
+        />
+        <Stat
+          label={`${monthName(today)} spend`}
+          value={moneyRound(spentNow)}
+          detail={spentBefore > 0 ? spendChange(spentNow, spentBefore, monthName(lastMonth)) : "First month on record"}
+          href="/money"
+        />
+        <Stat label="Subscriptions" value={moneyRound(runRate)} detail="a month" href="/money" />
+        {nextRenewal ? (
+          <Stat
+            label="Next renewal"
+            value={money(Number(nextRenewal.amount))}
+            detail={`${nextRenewal.name}, ${dueInfo(nextRenewal.upcoming!, today).label.toLowerCase()}`}
+            href="/money"
+          />
+        ) : null}
+      </StatRow>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-10">
-          <Section title="Needs attention" count={attention.length}>
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-12">
+          <Section id="attention" title="Needs attention" count={attention.length}>
             {attention.length ? (
               <>
                 <ul>
@@ -181,7 +215,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
                     <li key={p.id}>
                       <Link
                         href={`/projects/${p.id}`}
-                        className="group grid min-h-12 grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_96px_72px_84px] items-center gap-4 border-b border-line py-2 hover:bg-bg"
+                        className={`group grid min-h-12 grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_96px_72px_84px] items-center gap-4 border-b border-l-2 border-line py-2 pl-3 hover:bg-bg ${HEALTH[p.health].edge}`}
                       >
                         <span className="flex min-w-0 flex-col">
                           <span className="truncate text-body font-medium group-hover:text-accent">{p.name}</span>
@@ -195,7 +229,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
                         <span className="min-w-0 text-ui">
                           <PersonName person={p.lead} />
                         </span>
-                        <Progress done={p.done} total={p.tasks.length} />
+                        <Progress done={p.done} total={p.tasks.length} tone={p.health} />
                         <span className="text-ui">{p.due_date ? <Due date={p.due_date} /> : <span className="text-ink-3">No date</span>}</span>
                         <span className={`text-right text-ui font-medium ${HEALTH[p.health].cls}`} title={p.reason}>
                           {HEALTH[p.health].label}
@@ -211,7 +245,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
           </Section>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-10">
+        <div className="flex min-w-0 flex-col gap-12">
           <Mentions items={mentions} newSince={digestFrom} />
           <Digest items={changes} since={since} />
           {mine.length ? (
@@ -221,36 +255,14 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
           ) : null}
         </div>
       </div>
-
-      <Link
-        href="/money"
-        className="mt-12 flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-line pt-4 text-ui text-ink-2 hover:text-ink"
-      >
-        <span>
-          {monthName(today)} spend <span className="num font-medium text-ink">{moneyRound(spentNow)}</span>
-          {spentBefore > 0 ? <SpendChange now={spentNow} before={spentBefore} month={monthName(lastMonth)} /> : null}
-        </span>
-        <span>
-          Subscriptions <span className="num font-medium text-ink">{moneyRound(runRate)}</span> a month
-        </span>
-        {nextRenewal ? (
-          <span>
-            Next renewal <span className="font-medium text-ink">{nextRenewal.name}</span>, {dueInfo(nextRenewal.upcoming!, today).label}
-          </span>
-        ) : null}
-      </Link>
     </>
   );
 }
 
-function SpendChange({ now, before, month }: { now: number; before: number; month: string }) {
+function spendChange(now: number, before: number, month: string) {
   const pct = Math.round(((now - before) / before) * 100);
-  if (pct === 0) return <span>, same as {month}</span>;
-  return (
-    <span>
-      , {Math.abs(pct)}% {pct > 0 ? "up" : "down"} on {month}
-    </span>
-  );
+  if (pct === 0) return `Same as ${month}`;
+  return `${Math.abs(pct)}% ${pct > 0 ? "up" : "down"} on ${month}`;
 }
 
 /** Changes by other people since the owner's last session, counted per project. */

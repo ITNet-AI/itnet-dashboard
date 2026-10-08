@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { NewTask } from "@/components/tasks/new-task";
 import { TaskList } from "@/components/tasks/task-list";
+import { buttonClass } from "@/components/ui/button";
 import { PageHeader, TabLinks } from "@/components/ui/page";
 import { getCurrentUser } from "@/lib/auth";
 import { listPeople, listProjectOptions, listTasks } from "@/lib/queries";
@@ -53,6 +54,13 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
         tasks={tasks}
         showAssignee={view !== "mine"}
         empty={view === "mine" ? "Nothing assigned to you. Enjoy it, or pick something up from a project." : "No open tasks here."}
+        emptyAction={
+          view === "mine" ? (
+            <Link href="/projects" className={buttonClass("primary")}>
+              Browse projects
+            </Link>
+          ) : undefined
+        }
       />
     </>
   );

@@ -25,10 +25,10 @@ import type { TaskRow } from "@/lib/queries";
 import { QuickAdd } from "./quick-add";
 
 type Status = "todo" | "doing" | "done";
-const COLUMNS: { id: Status; label: string }[] = [
-  { id: "todo", label: "To do" },
-  { id: "doing", label: "In progress" },
-  { id: "done", label: "Done" },
+const COLUMNS: { id: Status; label: string; dot: string }[] = [
+  { id: "todo", label: "To do", dot: "border border-ink-3" },
+  { id: "doing", label: "In progress", dot: "bg-accent" },
+  { id: "done", label: "Done", dot: "bg-good" },
 ];
 
 type Columns = Record<Status, TaskRow[]>;
@@ -161,9 +161,10 @@ export function Board({ tasks, projectId }: { tasks: TaskRow[]; projectId: strin
           setCols(server);
         }}
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {/* Phone: one column at a time, swipe sideways. Desktop: three across. */}
+        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
           {COLUMNS.map((c) => (
-            <Column key={c.id} id={c.id} label={c.label} tasks={cols[c.id]} projectId={projectId} justDragged={justDragged} />
+            <Column key={c.id} id={c.id} label={c.label} dot={c.dot} tasks={cols[c.id]} projectId={projectId} justDragged={justDragged} />
           ))}
         </div>
         <DragOverlay dropAnimation={null}>{active ? <Card task={active} lifted /> : null}</DragOverlay>
@@ -175,12 +176,14 @@ export function Board({ tasks, projectId }: { tasks: TaskRow[]; projectId: strin
 function Column({
   id,
   label,
+  dot,
   tasks,
   projectId,
   justDragged,
 }: {
   id: Status;
   label: string;
+  dot: string;
   tasks: TaskRow[];
   projectId: string;
   justDragged: React.RefObject<boolean>;
@@ -190,11 +193,14 @@ function Column({
     <section
       ref={setNodeRef}
       aria-label={label}
-      className={`flex min-h-40 min-w-0 flex-col gap-1.5 rounded-dlg bg-bg p-2 transition-colors ${isOver ? "bg-sunk" : ""}`}
+      className={`flex min-h-40 w-[84%] shrink-0 snap-center flex-col gap-1.5 rounded-dlg bg-bg p-2 ring-1 transition-[background-color,box-shadow] md:w-auto md:shrink ${
+        isOver ? "bg-sunk ring-accent" : "ring-transparent"
+      }`}
     >
       <h3 className="flex h-7 items-center gap-2 px-1.5 text-ui font-semibold">
+        <span aria-hidden="true" className={`size-2 rounded-full ${dot}`} />
         {label}
-        <span className="num font-normal text-ink-3">{tasks.length}</span>
+        <span className="num rounded-full bg-surface px-1.5 text-meta font-medium text-ink-2 ring-1 ring-line">{tasks.length}</span>
       </h3>
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <ul className="flex flex-col gap-1.5">
@@ -234,10 +240,10 @@ function Card({ task, lifted = false, justDragged }: { task: TaskRow; lifted?: b
         if (justDragged?.current) e.preventDefault();
       }}
       draggable={false}
-      className={`flex flex-col gap-2 rounded-ctl border bg-surface px-3 py-2.5 ${
+      className={`flex flex-col gap-2 rounded-ctl border bg-surface px-3 py-2.5 transition-[border-color,box-shadow] ${
         lifted
-          ? "rotate-[0.6deg] border-line-2 shadow-[0_8px_24px_-8px_var(--shadow)]"
-          : "border-line hover:border-line-2"
+          ? "rotate-[0.6deg] scale-[1.02] border-line-2 shadow-[0_12px_28px_-8px_var(--shadow)]"
+          : "border-line hover:border-line-2 hover:shadow-[0_2px_8px_-4px_var(--shadow)]"
       }`}
     >
       <span className={`text-body ${done ? "text-ink-2 line-through decoration-ink-3" : ""}`}>{task.title}</span>
