@@ -72,7 +72,7 @@ The schema lives in `supabase/migrations/` and every file there has been applied
 After changing it, regenerate types:
 
 ```
-supabase gen types typescript --project-id xbslkwattmhcttuwtwfo > lib/database.types.ts
+supabase gen types typescript --project-id pytuwcbtylectoipbjfw > lib/database.types.ts
 ```
 
 ## Layout
