@@ -5,27 +5,42 @@
   Layout: pale blue-grey sidebar, white working surface, rows not cards.
   Type: Bricolage Grotesque for page headers, Inter for everything else.
   Color: navy ink for primary actions, brand blue for links and "in progress", brand red for late and destructive.
-  Light only for v1. Every color is a token here, so a dark palette is one more block later.
+  Light and dark: every color is a token here, each with both faces via light-dark().
 */
 :root {
-  --bg: #f4f7fa;          /* sidebar + board ground (brand "wash") */
-  --surface: #ffffff;     /* working surface, inputs, dialogs */
-  --sunk: #eef3f8;        /* hover rows, board columns, avatar ground (brand "soft") */
-  --ink: #14212e;         /* primary text and primary buttons (brand ink) */
-  --ink-hover: #263a4d;
-  --ink-2: #5a6b7a;       /* secondary text (brand "dim") */
-  --ink-3: #8696a5;       /* labels, placeholders; a step darker than brand "faint" so it stays readable */
-  --line: #e6ecf1;        /* hairlines */
-  --line-2: #d6e0e9;      /* input borders, stronger rules */
-  --accent: #1f6fbf;      /* brand blue: links, focus, "in progress" */
-  --accent-hover: #185a9c;
-  --accent-soft: #e8f0f8;
-  --crit: #c8392b;        /* brand red: overdue, destructive */
-  --crit-soft: #fbeae8;
-  --warn: #8a5a00;        /* due today, paused */
-  --warn-soft: #fbeedc;
-  --good: #17804a;        /* brand green: done */
-  --good-soft: #e6f4ec;
+  /*
+    Each token carries both faces: light-dark(light, dark). Which one shows follows color-scheme:
+    the system by default, or data-theme="light" | "dark" on <html> when the person has chosen.
+  */
+  color-scheme: light dark;
+
+  --bg: light-dark(#f4f7fa, #0d141c);          /* sidebar + board ground (brand "wash") */
+  --surface: light-dark(#ffffff, #141d27);     /* working surface, inputs, dialogs */
+  --sunk: light-dark(#eef3f8, #1b2632);        /* hover rows, board columns, avatar ground (brand "soft") */
+  --ink: light-dark(#14212e, #e7edf3);         /* primary text and primary buttons (brand ink) */
+  --ink-hover: light-dark(#263a4d, #ffffff);
+  --ink-2: light-dark(#5a6b7a, #a0b0bf);       /* secondary text (brand "dim") */
+  --ink-3: light-dark(#8696a5, #71828f);       /* labels, placeholders; a step darker than brand "faint" so it stays readable */
+  --line: light-dark(#e6ecf1, #233040);        /* hairlines */
+  --line-2: light-dark(#d6e0e9, #2f3f50);      /* input borders, stronger rules */
+  --accent: light-dark(#1f6fbf, #5ea6ea);      /* brand blue: links, focus, "in progress" */
+  --accent-hover: light-dark(#185a9c, #80baf2);
+  --accent-soft: light-dark(#e8f0f8, #17293d);
+  --crit: light-dark(#c8392b, #f0705f);        /* brand red: overdue, destructive */
+  --crit-soft: light-dark(#fbeae8, #3a1d1a);
+  --warn: light-dark(#8a5a00, #e2a93c);        /* due today, paused */
+  --warn-soft: light-dark(#fbeedc, #3a2c12);
+  --good: light-dark(#17804a, #4fcc88);        /* brand green: done */
+  --good-soft: light-dark(#e6f4ec, #13301f);
+  --on-ink: light-dark(#ffffff, #0d141c);      /* text on primary buttons */
+  --shadow: light-dark(rgb(23 32 29 / 0.35), rgb(0 0 0 / 0.6));
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -50,6 +65,7 @@
   --color-warn-soft: var(--warn-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
+  --color-on-ink: var(--on-ink);
 
   /* type scale: 12 / 13 / 14 / 16 / 32 */
   --text-meta: 12px;
@@ -78,11 +94,10 @@
   }
 
   dialog::backdrop {
-    background: rgb(23 32 29 / 0.28);
+    background: light-dark(rgb(23 32 29 / 0.28), rgb(0 0 0 / 0.55));
   }
 
   html {
-    color-scheme: light;
     -webkit-font-smoothing: antialiased;
   }
 

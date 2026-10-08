@@ -236,7 +236,7 @@ function Card({ task, lifted = false, justDragged }: { task: TaskRow; lifted?: b
       draggable={false}
       className={`flex flex-col gap-2 rounded-ctl border bg-surface px-3 py-2.5 ${
         lifted
-          ? "rotate-[0.6deg] border-line-2 shadow-[0_8px_24px_-8px_rgb(23_32_29/0.3)]"
+          ? "rotate-[0.6deg] border-line-2 shadow-[0_8px_24px_-8px_var(--shadow)]"
           : "border-line hover:border-line-2"
       }`}
     >

@@ -36,7 +36,7 @@ export function Dialog({
         if (e.target === e.currentTarget) onClose();
       }}
       aria-label={title}
-      className={`m-auto w-[calc(100%-32px)] rounded-dlg border border-line bg-surface p-0 text-ink shadow-[0_12px_40px_-12px_rgb(23_32_29/0.35)] ${
+      className={`m-auto w-[calc(100%-32px)] rounded-dlg border border-line bg-surface p-0 text-ink shadow-[0_12px_40px_-12px_var(--shadow)] ${
         width === "lg" ? "max-w-[760px]" : "max-w-[460px]"
       }`}
     >

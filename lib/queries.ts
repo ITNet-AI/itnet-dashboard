@@ -1,4 +1,6 @@
 import "server-only";
+import { todayISO } from "@/lib/dates";
+import { projectHealth } from "@/lib/health";
 import { createClient } from "@/lib/supabase/server";
 
 export const PERSON = "id, full_name, email";
@@ -91,3 +93,16 @@ export async function listActivity(limit = 30, projectId?: string) {
 }
 
 export type ActivityRow = Awaited<ReturnType<typeof listActivity>>[number];
+
+/** Active projects for the sidebar: soonest due first, with a health reading each. */
+export async function listNavProjects(limit = 6) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("id, name, due_date, tasks(status, due_date)")
+    .eq("status", "active")
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .limit(limit);
+  const today = todayISO();
+  return (data ?? []).map((p) => ({ id: p.id, name: p.name, health: projectHealth(p, today).health }));
+}
