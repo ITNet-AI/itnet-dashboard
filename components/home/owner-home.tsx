@@ -1,45 +1,30 @@
 import Link from "next/link";
 import { ActivityFeed } from "@/components/home/activity-feed";
+import { Attention, type AttentionItem } from "@/components/home/attention";
 import { Mentions } from "@/components/home/mentions";
 import { TaskList } from "@/components/tasks/task-list";
 import { PersonName } from "@/components/ui/avatar";
 import { Due } from "@/components/ui/badges";
-import { Empty, PageHeader, Section } from "@/components/ui/page";
+import { Card, Quiet } from "@/components/ui/card";
+import { GLYPH, Icon } from "@/components/ui/icons";
+import { Empty, PageHeader } from "@/components/ui/page";
 import { Progress } from "@/components/ui/progress";
-import { Stat, StatRow } from "@/components/ui/stats";
+import { Stat, StatRow, type Trend } from "@/components/ui/stats";
 import { spendInMonth, summarize } from "@/lib/costs";
 import { addDays, daysBetween, monthBounds, todayISO } from "@/lib/dates";
-import { displayName, dueInfo, firstName, money, monthName, moneyRound, sinceLabel, todayHeading } from "@/lib/format";
+import { displayName, dueInfo, firstName, greeting, money, moneyRound, moneyShort, monthName, monthShort, sinceLabel, todayHeading } from "@/lib/format";
 import { QUIET_DAYS, projectHealth, type Health } from "@/lib/health";
-import { PERSON, TASK_FIELDS, listMentions, listTasks, type ActivityRow } from "@/lib/queries";
+import { PERSON, TASK_FIELDS, listMentions, listPeople, listTasks, type ActivityRow } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 type Me = { id: string; full_name: string; email: string };
 
-type Attention = {
-  key: string;
-  tag: "Late" | "Overdue" | "At risk" | "Renews" | "Unassigned";
-  title: string;
-  detail: string;
-  aside: string;
-  href: string;
+/* On track is the quiet default: a softened bar and a plain label, so only trouble gets colour and weight. */
+const HEALTH: Record<Health, { label: string; cls: string; bar: string }> = {
+  late: { label: "Late", cls: "font-semibold text-crit", bar: "bg-crit" },
+  at_risk: { label: "At risk", cls: "font-semibold text-warn", bar: "bg-warn" },
+  on_track: { label: "On track", cls: "text-ink-2", bar: "bg-good/55" },
 };
-
-const TAG_TONE: Record<Attention["tag"], string> = {
-  Late: "bg-crit-soft text-crit",
-  Overdue: "bg-crit-soft text-crit",
-  "At risk": "bg-warn-soft text-warn",
-  Renews: "bg-sunk text-ink-2",
-  Unassigned: "bg-sunk text-ink-2",
-};
-
-const HEALTH: Record<Health, { label: string; cls: string; edge: string }> = {
-  late: { label: "Late", cls: "text-crit", edge: "border-l-crit" },
-  at_risk: { label: "At risk", cls: "text-warn", edge: "border-l-warn" },
-  on_track: { label: "On track", cls: "text-good", edge: "border-l-good" },
-};
-
-const ATTENTION_LIMIT = 8;
 
 /** Home for admins: what needs the owner, how each project is doing, what changed, and money in one line. */
 export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: string }) {
@@ -47,7 +32,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
   const today = todayISO();
   const lastMonth = addDays(monthBounds(today).start, -1);
 
-  const [{ data: projects }, { data: openTasks }, { data: costs }, { data: recent }, { data: digest }, mine, mentions] = await Promise.all([
+  const [{ data: projects }, { data: openTasks }, { data: costs }, { data: recent }, { data: digest }, mine, mentions, people] = await Promise.all([
     supabase
       .from("projects")
       .select(`id, name, due_date, client:clients(name), lead:profiles(${PERSON}), tasks(status, due_date)`)
@@ -70,6 +55,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
       .limit(200),
     listTasks({ assigneeId: user.id }),
     listMentions(user.id, 5),
+    listPeople(),
   ]);
 
   // Last activity per project, for spotting quiet ones.
@@ -85,39 +71,51 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
   const order: Record<Health, number> = { late: 0, at_risk: 1, on_track: 2 };
   rows.sort((a, b) => order[a.health] - order[b.health]);
 
-  // Needs attention, most urgent first.
-  const attention: Attention[] = [];
-  for (const p of rows.filter((r) => r.health === "late"))
-    attention.push({ key: `p-${p.id}`, tag: "Late", title: p.name, detail: p.reason, aside: displayName(p.lead), href: `/projects/${p.id}` });
+  // Needs attention, by severity: overdue (late projects, then overdue tasks), at risk, unassigned, renewals.
+  const attention: AttentionItem[] = [];
+  const projectItem = (p: (typeof rows)[number], kind: "overdue" | "at_risk", label: string): AttentionItem => ({
+    key: `p-${p.id}`,
+    kind,
+    label,
+    title: p.name,
+    detail: p.reason,
+    aside: displayName(p.lead),
+    href: `/projects/${p.id}`,
+    project: { id: p.id, name: p.name },
+    assignee: null,
+    taskId: null,
+  });
+  const taskItem = (t: NonNullable<typeof openTasks>[number], kind: "overdue" | "unassigned", detail: string): AttentionItem => ({
+    key: `t-${t.id}`,
+    kind,
+    label: kind === "overdue" ? "Overdue" : "Unassigned",
+    title: t.title,
+    detail,
+    aside: "",
+    href: `/projects/${t.project_id}?task=${t.id}`,
+    project: t.project,
+    assignee: t.assignee,
+    taskId: t.id,
+  });
+  for (const p of rows.filter((r) => r.health === "late")) attention.push(projectItem(p, "overdue", "Late"));
   for (const t of (openTasks ?? []).filter((t) => t.due_date && t.due_date < today))
-    attention.push({
-      key: `t-${t.id}`,
-      tag: "Overdue",
-      title: t.title,
-      detail: `${t.assignee ? displayName(t.assignee) : "Unassigned"}, ${dueInfo(t.due_date!, today).label.toLowerCase()}`,
-      aside: t.project?.name ?? "",
-      href: `/projects/${t.project_id}?task=${t.id}`,
-    });
-  for (const p of rows.filter((r) => r.health === "at_risk"))
-    attention.push({ key: `p-${p.id}`, tag: "At risk", title: p.name, detail: p.reason, aside: displayName(p.lead), href: `/projects/${p.id}` });
+    attention.push(taskItem(t, "overdue", `${t.assignee ? displayName(t.assignee) : "Nobody on it"}, ${dueInfo(t.due_date!, today).label.toLowerCase()}`));
+  for (const p of rows.filter((r) => r.health === "at_risk")) attention.push(projectItem(p, "at_risk", "At risk"));
+  for (const t of (openTasks ?? []).filter((t) => !t.assignee_id && !(t.due_date && t.due_date < today)))
+    attention.push(taskItem(t, "unassigned", t.due_date ? `Due ${dueInfo(t.due_date, today).label.toLowerCase()}` : "No due date"));
   const { renewals, runRate } = summarize(costs ?? [], today);
   for (const r of renewals.filter((r) => daysBetween(today, r.upcoming!) <= 7))
     attention.push({
       key: `c-${r.id}`,
-      tag: "Renews",
+      kind: "renews",
+      label: "Renews",
       title: r.name,
       detail: dueInfo(r.upcoming!, today).label,
       aside: money(Number(r.amount)),
       href: "/money",
-    });
-  for (const t of (openTasks ?? []).filter((t) => !t.assignee_id && !(t.due_date && t.due_date < today)))
-    attention.push({
-      key: `u-${t.id}`,
-      tag: "Unassigned",
-      title: t.title,
-      detail: t.due_date ? `Due ${dueInfo(t.due_date, today).label.toLowerCase()}` : "No due date",
-      aside: t.project?.name ?? "",
-      href: `/projects/${t.project_id}?task=${t.id}`,
+      project: r.project,
+      assignee: null,
+      taskId: null,
     });
 
   const spentNow = spendInMonth(costs ?? [], today);
@@ -127,18 +125,22 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
   const changes = digest ?? [];
   const lateProjects = rows.filter((r) => r.health === "late").length;
   const riskProjects = rows.filter((r) => r.health === "at_risk").length;
+  const onFire = attention.filter((a) => a.kind === "overdue").length;
+  const canWait = attention.length - onFire;
+
+  // Today's focus is your own list minus what Needs attention already shows, so nothing is said twice.
+  const shownTaskIds = new Set(attention.map((a) => a.taskId).filter(Boolean));
+  const focus = mine.filter((t) => !shownTaskIds.has(t.id)).slice(0, 8);
+  const sharedCount = mine.length - mine.filter((t) => !shownTaskIds.has(t.id)).length;
 
   return (
-    <>
+    <div data-wash="" className="flex flex-col">
       <PageHeader
-        title={todayHeading()}
+        title={`${greeting()}, ${firstName(user)}`}
         meta={
           <p className="text-body text-ink-2">
-            Hi {firstName(user)}.{" "}
-            {attention.length
-              ? `${attention.length} ${attention.length === 1 ? "thing needs" : "things need"} you.`
-              : "Nothing needs you today."}{" "}
-            {changes.length ? `${changes.length} ${changes.length === 1 ? "update" : "updates"} from the team ${since}.` : ""}
+            <span className="text-ink-3">{todayHeading()}.</span> {fireLine(onFire, canWait)}
+            {changes.length ? ` ${changes.length} ${changes.length === 1 ? "update" : "updates"} from the team ${since}.` : ""}
           </p>
         }
       />
@@ -146,76 +148,63 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
         <Stat
           label="Needs you"
           value={attention.length}
-          tone={attention.length ? "crit" : "good"}
-          detail={attention.length ? "Late, overdue, unassigned, renewing" : "All clear"}
+          tone={onFire ? "crit" : attention.length ? "warn" : "good"}
+          icon={<Icon>{onFire ? GLYPH.flame : attention.length ? GLYPH.clock : GLYPH.check}</Icon>}
+          detail={onFire ? `${onFire} urgent, ${canWait} can wait` : attention.length ? "Nothing urgent, all of it can wait" : "All clear, nothing waiting"}
           href="#attention"
         />
         <Stat
           label="Active projects"
           value={rows.length}
-          detail={lateProjects ? `${lateProjects} late` : riskProjects ? `${riskProjects} at risk` : "All on track"}
-          tone={lateProjects ? "crit" : riskProjects ? "warn" : "ink"}
+          tone={lateProjects ? "crit" : riskProjects ? "warn" : rows.length ? "good" : "accent"}
+          icon={<Icon>{GLYPH.folder}</Icon>}
+          detail={lateProjects ? `${lateProjects} late` : riskProjects ? `${riskProjects} at risk` : rows.length ? "All on track" : "None yet"}
           href="/projects"
         />
         <Stat
           label={`${monthName(today)} spend`}
           value={moneyRound(spentNow)}
-          detail={spentBefore > 0 ? spendChange(spentNow, spentBefore, monthName(lastMonth)) : "First month on record"}
+          tone="ink"
+          icon={<Icon>{GLYPH.rupee}</Icon>}
+          trend={spentBefore > 0 ? spendTrend(spentNow, spentBefore, monthShort(lastMonth)) : undefined}
+          detail="First month on record"
           href="/money"
         />
         <Stat
           label="Subscriptions"
           value={moneyRound(runRate)}
+          tone="plum"
+          icon={<Icon>{GLYPH.repeat}</Icon>}
           detail={nextRenewal ? `a month, next ${nextRenewal.name} ${dueInfo(nextRenewal.upcoming!, today).label.toLowerCase()}` : "a month"}
           href="/money"
         />
       </StatRow>
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-12">
-          <Section id="attention" title="Needs attention" count={attention.length}>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Card id="attention" title="Needs attention" count={attention.length} flush>
             {attention.length ? (
-              <>
-                <ul>
-                  {attention.slice(0, ATTENTION_LIMIT).map((a) => (
-                    <li key={a.key}>
-                      <Link
-                        href={a.href}
-                        className="group grid min-h-11 grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line py-2 hover:bg-bg"
-                      >
-                        <span className={`justify-self-start rounded-full px-2 py-0.5 text-meta font-medium ${TAG_TONE[a.tag]}`}>{a.tag}</span>
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate text-body group-hover:text-accent">{a.title}</span>
-                          <span className="truncate text-meta text-ink-2">{a.detail}</span>
-                        </span>
-                        <span className="num max-w-36 truncate text-right text-ui text-ink-2">{a.aside}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {attention.length > ATTENTION_LIMIT ? (
-                  <p className="pt-2 text-meta text-ink-3">
-                    And {attention.length - ATTENTION_LIMIT} more. <Link href="/tasks?view=all" className="text-ink-2 hover:text-ink">See all open tasks</Link>
-                  </p>
-                ) : null}
-              </>
+              <Attention items={attention} people={people} currentUserId={user.id} />
             ) : (
-              <Empty>Nothing late, nothing unassigned, no renewals this week.</Empty>
+              <Quiet tone="good" icon={<Icon>{GLYPH.check}</Icon>} title="All clear">
+                Nothing late, nothing unassigned, no renewals this week. Enjoy the quiet.
+              </Quiet>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Projects" count={rows.length} action={<Link href="/projects" className="text-ui text-ink-2 hover:text-ink">All projects</Link>}>
+          <Card title="Projects" count={rows.length} action={<Link href="/projects" className="text-ui text-ink-2 hover:text-ink">All projects</Link>} flush>
             {rows.length ? (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border-t border-line">
                 <ul className="min-w-[560px]">
                   {rows.map((p) => (
-                    <li key={p.id}>
+                    <li key={p.id} className="relative">
+                      <span aria-hidden="true" className={`absolute inset-y-3 left-2 w-[3px] rounded-full ${HEALTH[p.health].bar}`} />
                       <Link
                         href={`/projects/${p.id}`}
-                        className={`group grid min-h-12 grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_96px_72px_84px] items-center gap-4 border-b border-l-2 border-line py-2 pl-3 hover:bg-bg ${HEALTH[p.health].edge}`}
+                        className="group grid min-h-16 grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_96px_72px_80px] items-center gap-4 border-b border-line py-3 pr-4 pl-5 transition-colors last:rounded-b-dlg last:border-b-0 hover:bg-sunk"
                       >
                         <span className="flex min-w-0 flex-col">
-                          <span className="truncate text-body font-medium group-hover:text-accent">{p.name}</span>
+                          <span className="truncate text-body group-hover:text-accent">{p.name}</span>
                           <span className="truncate text-meta text-ink-3">
                             {p.client?.name ?? "Internal"}
                             {p.quietDays >= QUIET_DAYS ? (
@@ -228,7 +217,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
                         </span>
                         <Progress done={p.done} total={p.tasks.length} tone={p.health} />
                         <span className="text-ui">{p.due_date ? <Due date={p.due_date} /> : <span className="text-ink-3">No date</span>}</span>
-                        <span className={`text-right text-ui font-medium ${HEALTH[p.health].cls}`} title={p.reason}>
+                        <span className={`text-right text-ui ${HEALTH[p.health].cls}`} title={p.reason}>
                           {HEALTH[p.health].label}
                         </span>
                       </Link>
@@ -239,27 +228,51 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
             ) : (
               <Empty>No active projects.</Empty>
             )}
-          </Section>
+          </Card>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-12">
+        <div className="flex min-w-0 flex-col gap-6">
+          {mine.length ? (
+            <Card title="Today's focus" count={focus.length || undefined} action={<Link href="/tasks" className="text-ui text-ink-2 hover:text-ink">All</Link>}>
+              {focus.length ? (
+                <TaskList tasks={focus} grouped={false} progress stacked empty="" />
+              ) : (
+                <p className="py-3 text-ui text-ink-3">Everything on your list is already in Needs attention.</p>
+              )}
+              {sharedCount && focus.length ? (
+                <p className="pt-3 text-meta text-ink-3">
+                  {sharedCount} more of yours {sharedCount === 1 ? "is" : "are"} in Needs attention.
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
           <Mentions items={mentions} newSince={digestFrom} />
           <Digest items={changes} since={since} />
-          {mine.length ? (
-            <Section title="Your tasks" count={mine.length} action={<Link href="/tasks" className="text-ui text-ink-2 hover:text-ink">All</Link>}>
-              <TaskList tasks={mine.slice(0, 5)} grouped={false} empty="" />
-            </Section>
-          ) : null}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function spendChange(now: number, before: number, month: string) {
-  const pct = Math.round(((now - before) / before) * 100);
-  if (pct === 0) return `Same as ${month}`;
-  return `${Math.abs(pct)}% ${pct > 0 ? "up" : "down"} on ${month}`;
+function fireLine(onFire: number, canWait: number): string {
+  const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
+  if (onFire && canWait) return `${things(onFire)} ${onFire === 1 ? "is" : "are"} on fire, ${canWait} can wait.`;
+  if (onFire) return `${things(onFire)} ${onFire === 1 ? "is" : "are"} on fire, nothing else is waiting.`;
+  if (canWait) return `Nothing's on fire. ${things(canWait)} can wait.`;
+  return "Nothing's on fire and nothing's waiting.";
+}
+
+/**
+ * Month on month. A percentage only when the baseline is big enough to make it mean something;
+ * a tiny September next to a normal October would otherwise read as "4446% up", which looks like a bug.
+ */
+function spendTrend(now: number, before: number, month: string): Trend {
+  const diff = now - before;
+  if (diff === 0) return { dir: "flat", label: `Same as ${month}` };
+  const pct = Math.round((diff / before) * 100);
+  const dir = diff > 0 ? "up" : "down";
+  if (Math.abs(pct) > 200) return { dir, label: `${moneyShort(Math.abs(diff))} ${diff > 0 ? "more" : "less"} than ${month}` };
+  return { dir, label: `${Math.abs(pct)}% ${dir} on ${month}` };
 }
 
 /** Changes by other people since the owner's last session, counted per project. */
@@ -277,10 +290,10 @@ function Digest({ items, since }: { items: ActivityRow[]; since: string }) {
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
   return (
-    <Section title={`Since you last looked`} count={items.length}>
+    <Card title="Since you last looked" count={items.length || undefined}>
       {items.length ? (
         <div className="flex flex-col">
-          <p className="pt-3 text-meta text-ink-3">Changes by the team {since}.</p>
+          <p className="text-meta text-ink-3">Changes by the team {since}.</p>
           <ul className="pt-1">
             {[...byProject.values()].map((g) => {
               const parts = [
@@ -298,7 +311,7 @@ function Digest({ items, since }: { items: ActivityRow[]; since: string }) {
               return (
                 <li key={g.name}>
                   {g.href ? (
-                    <Link href={g.href} className="flex items-baseline justify-between gap-3 border-b border-line py-2 hover:bg-bg hover:[&>span:first-child]:text-accent">
+                    <Link href={g.href} className="flex items-baseline justify-between gap-3 border-b border-line py-2 hover:[&>span:first-child]:text-accent">
                       {inner}
                     </Link>
                   ) : (
@@ -317,8 +330,10 @@ function Digest({ items, since }: { items: ActivityRow[]; since: string }) {
           </details>
         </div>
       ) : (
-        <Empty>No changes from the team {since}. Your own edits don&apos;t show here.</Empty>
+        <Quiet icon={<Icon>{GLYPH.moon}</Icon>} title={`All quiet ${since}`}>
+          Nobody has moved a thing. Either everyone is heads-down or everyone is at lunch. Your own edits don&apos;t count here.
+        </Quiet>
       )}
-    </Section>
+    </Card>
   );
 }

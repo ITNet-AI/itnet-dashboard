@@ -13,6 +13,17 @@ export function moneyRound(amount: number): string {
   return inr.format(Math.round(amount));
 }
 
+/** Compact, for deltas and captions: ₹850, ₹57k, ₹1.2L, ₹3Cr. */
+export function moneyShort(amount: number): string {
+  const n = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  const trim = (v: number) => (v >= 10 ? Math.round(v).toString() : v.toFixed(1).replace(/\.0$/, ""));
+  if (n < 1000) return sign + inr.format(Math.round(n));
+  if (n < 1e5) return `${sign}₹${trim(n / 1e3)}k`;
+  if (n < 1e7) return `${sign}₹${trim(n / 1e5)}L`;
+  return `${sign}₹${trim(n / 1e7)}Cr`;
+}
+
 const shortDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
 const longDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -53,6 +64,20 @@ export function todayHeading(now = new Date()): string {
 
 export function monthName(iso: string): string {
   return new Intl.DateTimeFormat("en-IN", { month: "long", timeZone: "UTC" }).format(new Date(iso + "T00:00:00Z"));
+}
+
+/** "Sept", "Oct". */
+export function monthShort(iso: string): string {
+  return new Intl.DateTimeFormat("en-IN", { month: "short", timeZone: "UTC" }).format(new Date(iso + "T00:00:00Z"));
+}
+
+/** "Good morning" / "Good afternoon" / "Good evening", by the team's clock. */
+export function greeting(now = new Date()): string {
+  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: TEAM_TZ }).format(now));
+  if (hour < 5) return "Still up";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 export function initials(name: string | null | undefined, email?: string | null): string {

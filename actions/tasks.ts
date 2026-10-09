@@ -35,6 +35,11 @@ export async function moveTask(id: string, to: "todo" | "doing" | "done", positi
   return toState(await run(tasks.moveTask, { id, status: to, position }));
 }
 
+/** "Assign" on Home. null hands the task back to nobody. */
+export async function assignTask(id: string, assigneeId: string | null): Promise<ActionState> {
+  return toState(await run(tasks.updateTask, { id, assignee_id: assigneeId }));
+}
+
 /** Checkbox in task lists. */
 export async function setTaskDone(id: string, done: boolean): Promise<ActionState> {
   return toState(await run(tasks.setTaskDone, { id, done }));

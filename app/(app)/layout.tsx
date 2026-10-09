@@ -16,7 +16,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         initialCollapsed={collapsed}
         initialTheme={theme === "light" || theme === "dark" ? theme : undefined}
       />
-      <main className="min-w-0 flex-1 bg-surface pb-16 md:my-2 md:mr-2 md:rounded-dlg md:pb-0 md:ring-1 md:ring-line">
+      <div aria-hidden="true" className="brand-strip-v sticky top-0 hidden h-dvh shrink-0 md:grid" />
+      {/* Home marks itself data-wash and gets the grey ground for its cards; every other page keeps the white surface. */}
+      <main className="min-w-0 flex-1 bg-surface pb-16 has-[[data-wash]]:bg-bg md:my-2 md:mr-2 md:rounded-r-dlg md:pb-0">
         <div className="mx-auto max-w-[1120px] px-4 py-6 sm:px-8 md:py-9">{children}</div>
       </main>
     </div>

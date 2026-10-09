@@ -232,8 +232,9 @@ export function Sidebar({
         </div>
       </aside>
 
-      {/* Phone: logo and sign out on top, tabs along the bottom edge above the brand strip. */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-bg px-4 py-3 md:hidden">
+      {/* Phone: logo and sign out on top with the brand strip as its rule, tabs along the bottom edge. */}
+      <div className="sticky top-0 z-10 flex items-center justify-between bg-bg px-4 py-3 md:hidden">
+        <div aria-hidden="true" className="brand-strip absolute inset-x-0 bottom-0" />
         <Link href="/" aria-label="Home">
           <Logo height={26} />
         </Link>
@@ -247,7 +248,7 @@ export function Sidebar({
         </div>
       </div>
       <nav
-        className="fixed inset-x-0 bottom-[3px] z-20 grid h-14 border-t border-line bg-bg/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid h-14 border-t border-line bg-bg/95 backdrop-blur md:hidden"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
         aria-label="Main"
       >

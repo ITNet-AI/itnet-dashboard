@@ -32,8 +32,11 @@
   --warn-soft: light-dark(#fbeedc, #3a2c12);
   --good: light-dark(#17804a, #4fcc88);        /* brand green: done */
   --good-soft: light-dark(#e6f4ec, #13301f);
+  --plum: light-dark(#6b4fbb, #b39df0);        /* subscriptions and recurring money */
+  --plum-soft: light-dark(#efeafa, #2a2240);
   --on-ink: light-dark(#ffffff, #0d141c);      /* text on primary buttons */
   --shadow: light-dark(rgb(23 32 29 / 0.35), rgb(0 0 0 / 0.6));
+  --shadow-card: light-dark(rgb(20 33 46 / 0.05), rgb(0 0 0 / 0.35));
 }
 
 :root[data-theme="light"] {
@@ -65,6 +68,8 @@
   --color-warn-soft: var(--warn-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
+  --color-plum: var(--plum);
+  --color-plum-soft: var(--plum-soft);
   --color-on-ink: var(--on-ink);
 
   /* type scale: 12 / 13 / 14 / 16 / 32 */
@@ -121,12 +126,13 @@
     text-wrap: balance;
   }
 
-  /* The red and blue strip from itnetai.com, pinned to the bottom edge. */
+  /* The red and blue strip from itnetai.com: the seam between the menu and the working surface. */
   .brand-strip {
     display: grid;
     grid-template-columns: 1fr 1fr;
     height: 3px;
   }
+
   .brand-strip::before {
     content: "";
     background: var(--crit);
@@ -135,9 +141,87 @@
     content: "";
     background: var(--accent);
   }
+  .brand-strip-v {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    width: 3px;
+  }
+  .brand-strip-v::before {
+    content: "";
+    background: var(--crit);
+  }
+  .brand-strip-v::after {
+    content: "";
+    background: var(--accent);
+  }
 
   .num {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Home is the one page built from cards on the wash; everywhere else stays rows on the white surface. */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-dlg);
+    box-shadow: 0 1px 2px var(--shadow-card);
+  }
+
+  /*
+    Custom checkbox: the native input stays in the tree (keyboard, labels, screen readers) but is visually hidden;
+    the box beside it draws the tick as a stroke that completes, and pops once when it was just ticked.
+  */
+  .check {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border-radius: 5px;
+    border: 1.5px solid var(--line-2);
+    background: var(--surface);
+    color: var(--on-ink);
+    transition: background-color 120ms ease-out, border-color 120ms ease-out;
+  }
+  .check svg path {
+    stroke-dasharray: 16;
+    stroke-dashoffset: 16;
+    transition: stroke-dashoffset 180ms ease-out;
+  }
+  .peer:hover + .check,
+  .peer:focus-visible + .check {
+    border-color: var(--accent);
+  }
+  .peer:focus-visible + .check {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .peer:checked + .check {
+    background: var(--good);
+    border-color: var(--good);
+  }
+  .peer:checked + .check svg path {
+    stroke-dashoffset: 0;
+    transition-delay: 40ms;
+  }
+
+  /* A line drawn through the title when a task is finished, so it reads as "struck out" rather than swapped. */
+  .strike {
+    position: relative;
+  }
+  .strike::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .strike[data-done="true"]::after {
+    transform: scaleX(1);
   }
 
   /* Column headings over a list: small caps-ish, so they read as structure rather than content. */
@@ -180,6 +264,38 @@
     from {
       transform: scaleX(0);
     }
+  }
+
+  /* The tick that was just made: a short ring that expands and fades. */
+  .check-pop {
+    animation: check-pop 420ms ease-out;
+  }
+  @keyframes check-pop {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--good) 45%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 10px color-mix(in oklab, var(--good) 0%, transparent);
+    }
+  }
+
+  /* Rows that got snoozed or assigned leave quietly instead of vanishing. */
+  .row-out {
+    animation: row-out 180ms ease-in forwards;
+  }
+  @keyframes row-out {
+    to {
+      opacity: 0;
+      transform: translateX(6px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check svg path,
+  .check,
+  .strike::after {
+    transition: none;
   }
 }
 

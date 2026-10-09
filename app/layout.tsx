@@ -17,10 +17,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const chosen: Theme | undefined = theme === "light" || theme === "dark" ? theme : undefined;
   return (
     <html lang="en" className={`${inter.variable} ${bricolage.variable}`} data-theme={chosen}>
-      <body className="min-h-dvh">
-        <div aria-hidden="true" className="brand-strip fixed inset-x-0 bottom-0 z-30" />
-        {children}
-      </body>
+      <body className="min-h-dvh">{children}</body>
     </html>
   );
 }
