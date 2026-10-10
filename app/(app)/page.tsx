@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { after } from "next/server";
+import Link from "@/components/ui/link";
 import { ActivityFeed } from "@/components/home/activity-feed";
 import { Mentions } from "@/components/home/mentions";
 import { OwnerHome } from "@/components/home/owner-home";
@@ -15,13 +16,16 @@ import { daysBetween, todayISO } from "@/lib/dates";
 import { firstName, greeting, todayHeading } from "@/lib/format";
 import { listActivity, listMentions, listTasks } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import { recordHomeVisit } from "@/lib/visits";
+import { digestStart, recordHomeVisit } from "@/lib/visits";
 
 export const metadata: Metadata = { title: "Home" };
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const digestFrom = await recordHomeVisit(user);
+  const digestFrom = digestStart(user);
+  // The visit stamp is written after the response; cookies can't be read inside after(), so the client is made here.
+  const supabase = await createClient();
+  after(() => recordHomeVisit(supabase, user.id, digestFrom));
   if (user.is_admin) return <OwnerHome user={user} digestFrom={digestFrom} />;
   return <MemberHome user={user} digestFrom={digestFrom} />;
 }

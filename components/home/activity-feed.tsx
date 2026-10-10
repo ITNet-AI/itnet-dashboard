@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Empty } from "@/components/ui/page";
 import { ago, displayName } from "@/lib/format";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { ProjectForm } from "@/components/projects/project-form";
 import { PersonName } from "@/components/ui/avatar";
 import { Due, ProjectStatus } from "@/components/ui/badges";

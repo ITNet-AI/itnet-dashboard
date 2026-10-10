@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { useOptimistic, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import { assignTask } from "@/actions/tasks";
 import { Avatar, tint } from "@/components/ui/avatar";

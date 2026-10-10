@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { notFound } from "next/navigation";
 import { deleteProject } from "@/actions/projects";
 import { Comments } from "@/components/comments/comments";
-import { ProjectCosts } from "@/components/costs/project-costs";
+import { CompactCosts } from "@/components/costs/cost-tables";
 import { ActivityFeed } from "@/components/home/activity-feed";
 import { ProjectForm } from "@/components/projects/project-form";
 import { Board } from "@/components/tasks/board";
@@ -12,14 +12,14 @@ import { PersonName } from "@/components/ui/avatar";
 import { Due, ProjectStatus } from "@/components/ui/badges";
 import { Section } from "@/components/ui/page";
 import { getCurrentUser } from "@/lib/auth";
-import { PERSON, getTaskDetail, listActivity, listClientOptions, listPeople, listTasks } from "@/lib/queries";
+import { describeCost } from "@/lib/costs";
+import { PERSON, getProject, getTaskDetail, listActivity, listClientOptions, listPeople, listTasks } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/projects/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data } = await supabase.from("projects").select("name").eq("id", id).maybeSingle();
-  return { title: data?.name ?? "Project" };
+  const project = /^[0-9a-f-]{36}$/i.test(id) ? await getProject(id) : null;
+  return { title: project?.name ?? "Project" };
 }
 
 export default async function ProjectPage({ params, searchParams }: PageProps<"/projects/[id]">) {
@@ -31,18 +31,17 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const user = await getCurrentUser();
   const supabase = await createClient();
 
-  const [{ data: project }, tasks, people, clients, { data: comments }, activity, detail] = await Promise.all([
-    supabase
-      .from("projects")
-      .select(`id, name, description, status, due_date, client_id, lead_id, client:clients(id, name), lead:profiles(${PERSON})`)
-      .eq("id", id)
-      .maybeSingle(),
+  // One round trip for everything on the page, the admin-only costs included; RLS hides those from everyone else anyway.
+  const [project, tasks, people, clients, { data: comments }, activity, detail, costs, costProjects] = await Promise.all([
+    getProject(id),
     listTasks({ projectId: id, includeDone: true }),
     listPeople(),
     listClientOptions(),
     supabase.from("comments").select(`id, body, mentions, created_at, author:profiles(${PERSON})`).eq("project_id", id).order("created_at"),
     listActivity(12, id),
-    taskId && /^[0-9a-f-]{36}$/i.test(taskId) ? getTaskDetail(taskId) : Promise.resolve(null),
+    taskId && /^[0-9a-f-]{36}$/i.test(taskId) ? getTaskDetail(taskId) : null,
+    user.is_admin ? supabase.from("costs").select("*, project:projects(id, name)").eq("project_id", id).order("created_at", { ascending: false }) : null,
+    user.is_admin ? supabase.from("projects").select("id, name").order("name") : null,
   ]);
   if (!project) notFound();
 
@@ -117,7 +116,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           </div>
         </Section>
         <div className="flex min-w-0 flex-col gap-10">
-          {user.is_admin ? <ProjectCosts projectId={project.id} /> : null}
+          {user.is_admin ? (
+            <CompactCosts costs={(costs?.data ?? []).map((c) => describeCost(c))} projectId={project.id} projects={costProjects?.data ?? []} />
+          ) : null}
           <Section title="Recent activity">
             <ActivityFeed items={activity} showProject={false} empty="Nothing yet." />
           </Section>

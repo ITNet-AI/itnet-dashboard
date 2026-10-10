@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { moveTask } from "@/actions/tasks";

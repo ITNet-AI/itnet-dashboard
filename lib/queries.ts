@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { todayISO } from "@/lib/dates";
 import { projectHealth } from "@/lib/health";
 import { createClient } from "@/lib/supabase/server";
@@ -94,15 +95,35 @@ export async function listActivity(limit = 30, projectId?: string) {
 
 export type ActivityRow = Awaited<ReturnType<typeof listActivity>>[number];
 
-/** Active projects for the sidebar: soonest due first, with a health reading each. */
-export async function listNavProjects(limit = 6) {
+/**
+ * Active projects, soonest due first, with their tasks and their latest activity row.
+ * Cached per request so the sidebar and Home share one query.
+ */
+export const listActiveProjects = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("projects")
-    .select("id, name, due_date, tasks(status, due_date)")
+    .select(`id, name, due_date, client:clients(name), lead:profiles(${PERSON}), tasks(status, due_date), activity(created_at)`)
     .eq("status", "active")
     .order("due_date", { ascending: true, nullsFirst: false })
-    .limit(limit);
+    .order("created_at", { referencedTable: "activity", ascending: false })
+    .limit(1, { referencedTable: "activity" });
+  return data ?? [];
+});
+
+/** Active projects for the sidebar: soonest due first, with a health reading each. */
+export async function listNavProjects(limit = 6) {
   const today = todayISO();
-  return (data ?? []).map((p) => ({ id: p.id, name: p.name, health: projectHealth(p, today).health }));
+  return (await listActiveProjects()).slice(0, limit).map((p) => ({ id: p.id, name: p.name, health: projectHealth(p, today).health }));
 }
+
+/** One project with its client and lead. Cached per request so a page and its metadata share a query. */
+export const getProject = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select(`id, name, description, status, due_date, client_id, lead_id, client:clients(id, name), lead:profiles(${PERSON})`)
+    .eq("id", id)
+    .maybeSingle();
+  return data;
+});

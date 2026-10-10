@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/link";
 
 /** A row of headline figures split by hairlines. Not cards: they're one reading, left to right. */
 export function Stats({

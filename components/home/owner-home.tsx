@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { ActivityFeed } from "@/components/home/activity-feed";
 import { Attention, type AttentionItem } from "@/components/home/attention";
 import { Mentions } from "@/components/home/mentions";
@@ -14,7 +14,7 @@ import { spendInMonth, summarize } from "@/lib/costs";
 import { addDays, daysBetween, monthBounds, todayISO } from "@/lib/dates";
 import { displayName, dueInfo, firstName, greeting, money, moneyRound, moneyShort, monthName, monthShort, sinceLabel, todayHeading } from "@/lib/format";
 import { QUIET_DAYS, projectHealth, type Health } from "@/lib/health";
-import { PERSON, TASK_FIELDS, listMentions, listPeople, listTasks, type ActivityRow } from "@/lib/queries";
+import { PERSON, listActiveProjects, listMentions, listPeople, listTasks, type ActivityRow } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 type Me = { id: string; full_name: string; email: string };
@@ -32,20 +32,10 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
   const today = todayISO();
   const lastMonth = addDays(monthBounds(today).start, -1);
 
-  const [{ data: projects }, { data: openTasks }, { data: costs }, { data: recent }, { data: digest }, mine, mentions, people] = await Promise.all([
-    supabase
-      .from("projects")
-      .select(`id, name, due_date, client:clients(name), lead:profiles(${PERSON}), tasks(status, due_date)`)
-      .eq("status", "active")
-      .order("due_date", { ascending: true, nullsFirst: false }),
-    supabase.from("tasks").select(TASK_FIELDS).neq("status", "done").order("due_date", { nullsFirst: false }).limit(300),
+  const [projects, openTasks, { data: costs }, { data: digest }, mentions, people] = await Promise.all([
+    listActiveProjects(),
+    listTasks({}),
     supabase.from("costs").select("*, project:projects(id, name)"),
-    supabase
-      .from("activity")
-      .select("project_id, created_at")
-      .gte("created_at", addDays(today, -30))
-      .order("created_at", { ascending: false })
-      .limit(1000),
     supabase
       .from("activity")
       .select(`id, summary, action, entity_type, entity_id, created_at, meta, actor:profiles(${PERSON}), project:projects(id, name)`)
@@ -53,18 +43,17 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
       .neq("actor_id", user.id)
       .order("created_at", { ascending: false })
       .limit(200),
-    listTasks({ assigneeId: user.id }),
     listMentions(user.id, 5),
     listPeople(),
   ]);
+  // Your own list is a slice of the open tasks already fetched; no second tasks query.
+  const mine = openTasks.filter((t) => t.assignee_id === user.id);
+  // Soonest due first, undated last, for the attention list.
+  const byDue = [...openTasks].sort((a, b) => (a.due_date ?? "~").localeCompare(b.due_date ?? "~"));
 
-  // Last activity per project, for spotting quiet ones.
-  const lastActive = new Map<string, string>();
-  for (const a of recent ?? []) if (a.project_id && !lastActive.has(a.project_id)) lastActive.set(a.project_id, a.created_at);
-
-  const rows = (projects ?? []).map((p) => {
+  const rows = projects.map((p) => {
     const h = projectHealth(p, today);
-    const last = lastActive.get(p.id);
+    const last = p.activity[0]?.created_at;
     const quietDays = last ? daysBetween(todayISO(new Date(last)), today) : 30;
     return { ...p, ...h, quietDays, done: p.tasks.filter((t) => t.status === "done").length };
   });
@@ -85,7 +74,7 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
     assignee: null,
     taskId: null,
   });
-  const taskItem = (t: NonNullable<typeof openTasks>[number], kind: "overdue" | "unassigned", detail: string): AttentionItem => ({
+  const taskItem = (t: (typeof openTasks)[number], kind: "overdue" | "unassigned", detail: string): AttentionItem => ({
     key: `t-${t.id}`,
     kind,
     label: kind === "overdue" ? "Overdue" : "Unassigned",
@@ -98,10 +87,10 @@ export async function OwnerHome({ user, digestFrom }: { user: Me; digestFrom: st
     taskId: t.id,
   });
   for (const p of rows.filter((r) => r.health === "late")) attention.push(projectItem(p, "overdue", "Late"));
-  for (const t of (openTasks ?? []).filter((t) => t.due_date && t.due_date < today))
+  for (const t of byDue.filter((t) => t.due_date && t.due_date < today))
     attention.push(taskItem(t, "overdue", `${t.assignee ? displayName(t.assignee) : "Nobody on it"}, ${dueInfo(t.due_date!, today).label.toLowerCase()}`));
   for (const p of rows.filter((r) => r.health === "at_risk")) attention.push(projectItem(p, "at_risk", "At risk"));
-  for (const t of (openTasks ?? []).filter((t) => !t.assignee_id && !(t.due_date && t.due_date < today)))
+  for (const t of byDue.filter((t) => !t.assignee_id && !(t.due_date && t.due_date < today)))
     attention.push(taskItem(t, "unassigned", t.due_date ? `Due ${dueInfo(t.due_date, today).label.toLowerCase()}` : "No due date"));
   const { renewals, runRate } = summarize(costs ?? [], today);
   for (const r of renewals.filter((r) => daysBetween(today, r.upcoming!) <= 7))

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { useActionState } from "react";
 import { requestPasswordReset, setPassword, signIn } from "@/actions/auth";
 import { Button } from "@/components/ui/button";

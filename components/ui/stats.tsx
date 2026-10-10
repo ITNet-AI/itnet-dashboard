@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import type { ReactNode } from "react";
 import { GLYPH, Icon } from "@/components/ui/icons";
 

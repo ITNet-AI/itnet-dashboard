@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { NewTask } from "@/components/tasks/new-task";
 import { TaskList } from "@/components/tasks/task-list";
 import { buttonClass } from "@/components/ui/button";

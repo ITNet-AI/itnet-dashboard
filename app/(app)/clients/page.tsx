@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/ui/link";
 import { ClientForm } from "@/components/clients/client-form";
 import { Empty, PageHeader } from "@/components/ui/page";
 import { createClient } from "@/lib/supabase/server";
