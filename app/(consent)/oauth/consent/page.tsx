@@ -8,6 +8,19 @@ import { cookies, headers } from "next/headers";
 
 export const metadata: Metadata = { title: "Connect Claude" };
 
+/** What the server could see, by cookie name and size only, so a failure can be diagnosed without exposing the session. */
+async function serverDiagnostics(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const jar = (await cookies()).getAll().filter((c) => c.name.startsWith("sb-"));
+  const { data: claims } = await supabase.auth.getClaims();
+  const ua = (await headers()).get("user-agent") ?? "";
+  return [
+    `cookies ${jar.map((c) => `${c.name.replace(/^sb-[a-z0-9]+-/, "")}:${c.value.length}${c.value.startsWith("base64-") ? "b64" : ""}`).join(",") || "none"}`,
+    `claims ${claims?.claims?.sub ? "ok" : "none"}`,
+    `exp ${claims?.claims?.exp ? Math.round(Number(claims.claims.exp) - Date.now() / 1000) + "s" : "-"}`,
+    `ua ${/Electron|Claude/i.test(ua) ? "claude-app" : /Safari/.test(ua) && !/Chrome/.test(ua) ? "safari" : /Chrome/.test(ua) ? "chrome" : "other"}`,
+  ].join("; ");
+}
+
 /**
  * Supabase's OAuth server sends people here when an app such as Claude asks to act for them.
  * The details come from Supabase for the signed-in person only. The server asks first; if it can't read the session,
@@ -31,16 +44,7 @@ export default async function ConsentPage({ searchParams }: PageProps<"/oauth/co
     console.error("oauth consent: details failed on the server", JSON.stringify({ user: user.id, code: error?.code, status: error?.status, message: error?.message }));
     // A missing session is the server's problem, not the request's: let the browser, which holds the cookie, try.
     if (error?.name === "AuthSessionMissingError" || /session missing/i.test(error?.message ?? "")) {
-      // What the server could see, by name and size only, so a failure can be diagnosed without exposing the session.
-      const jar = (await cookies()).getAll().filter((c) => c.name.startsWith("sb-"));
-      const { data: claims } = await supabase.auth.getClaims();
-      const ua = (await headers()).get("user-agent") ?? "";
-      const serverDiag = [
-        `cookies ${jar.map((c) => `${c.name.replace(/^sb-[a-z0-9]+-/, "")}:${c.value.length}${c.value.startsWith("base64-") ? "b64" : ""}`).join(",") || "none"}`,
-        `claims ${claims?.claims?.sub ? "ok" : "none"}`,
-        `exp ${claims?.claims?.exp ? Math.round(Number(claims.claims.exp) - Date.now() / 1000) + "s" : "-"}`,
-        `ua ${/Electron|Claude/i.test(ua) ? "claude-app" : /Safari/.test(ua) && !/Chrome/.test(ua) ? "safari" : /Chrome/.test(ua) ? "chrome" : "other"}`,
-      ].join("; ");
+      const serverDiag = await serverDiagnostics(supabase);
       return <ConsentInBrowser id={id} person={person} serverReason={`${reason}; ${serverDiag}`} />;
     }
     return (
