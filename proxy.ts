@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNext } from "@/lib/safe-next";
 
 const PUBLIC_PATHS = ["/login", "/auth", "/forgot-password"];
 
@@ -34,16 +35,21 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
+    // Approving the Claude connector must survive a sign-in, authorization id and all.
+    if (path === "/oauth/consent") url.searchParams.set("next", path + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
   if (signedIn && path === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const next = safeNext(request.nextUrl.searchParams.get("next"), request.nextUrl.origin);
+    url.pathname = next.split("?")[0];
+    url.search = next.includes("?") ? next.slice(next.indexOf("?")) : "";
     return NextResponse.redirect(url);
   }
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // The Claude connector and its metadata authenticate with bearer tokens, not cookies, so the proxy stays out of them.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/mcp|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

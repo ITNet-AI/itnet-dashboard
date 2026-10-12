@@ -29,7 +29,7 @@ export function ActivityFeed({ items, showProject = true, empty }: { items: Acti
             <span className="text-meta text-ink-3">
               {showProject && item.project ? `${item.project.name}, ` : ""}
               <time dateTime={item.created_at}>{ago(item.created_at)}</time>
-              {meta.via === "agent" ? ", via the agent" : ""}
+              {meta.via === "agent" ? ", via the agent" : meta.via === "claude" ? ", via Claude" : ""}
             </span>
           </>
         );

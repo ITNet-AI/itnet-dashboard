@@ -5,7 +5,7 @@ import { via } from "@/lib/activity";
 import { callTool, tools, type Tool, type ToolContext } from "@/lib/tools";
 
 /** Tools that change things for good. The model can ask for them, but each one waits for a click in the chat. */
-const NEEDS_APPROVAL = new Set(["delete_task", "delete_project", "delete_client", "delete_comment", "delete_cost", "set_admin"]);
+export const NEEDS_APPROVAL = new Set(["delete_task", "delete_project", "delete_client", "delete_comment", "delete_cost", "set_admin"]);
 
 /**
  * The anthropic API wants every tool input to be a plain object schema. Most of ours already are; one or two are

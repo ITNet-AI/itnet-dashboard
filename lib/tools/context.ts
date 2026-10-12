@@ -1,17 +1,14 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type JwtPayload, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type { ToolContext } from "./define";
 
 /**
- * Builds a tool context from a person's Supabase access token, which is how an agent (via the MCP) will call tools.
- *
- * Who is acting comes only from the token, never from tool input, and every query runs as that person
- * under row level security. A member's agent therefore has exactly that member's rights: it can't read
- * costs, change admin access, delete projects, or post comments or activity as anyone else.
- * Admin status is read fresh from the database on every call, so revoking admin takes effect immediately.
+ * Checks a person's Supabase access token and returns a client that acts as them, with the token's verified claims.
+ * getClaims verifies the signature against the project's published keys (cached in-process) and the expiry.
+ * Callers that need more (the Claude connector checks issuer and OAuth client) inspect the claims returned here.
  */
-export async function contextFromAccessToken(token: string): Promise<ToolContext | null> {
+export async function verifyAccessToken(token: string): Promise<{ supabase: SupabaseClient<Database>; claims: JwtPayload } | null> {
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -20,10 +17,25 @@ export async function contextFromAccessToken(token: string): Promise<ToolContext
       auth: { persistSession: false, autoRefreshToken: false },
     },
   );
-  const { data } = await supabase.auth.getClaims(token);
-  const uid = data?.claims?.sub;
-  if (!uid) return null;
+  const { data, error } = await supabase.auth.getClaims(token);
+  if (error || !data?.claims?.sub) return null;
+  return { supabase, claims: data.claims };
+}
 
-  const { data: user } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+/** The profile behind verified claims, as a tool context. Admin status is read fresh, so revoking it takes effect at once. */
+export async function contextFromClaims(supabase: SupabaseClient<Database>, claims: JwtPayload): Promise<ToolContext | null> {
+  const { data: user } = await supabase.from("profiles").select("*").eq("id", claims.sub).maybeSingle();
   return user ? { supabase, user } : null;
+}
+
+/**
+ * Builds a tool context from a person's Supabase access token.
+ *
+ * Who is acting comes only from the token, never from tool input, and every query runs as that person
+ * under row level security. A member's agent therefore has exactly that member's rights: it can't read
+ * costs, change admin access, delete projects, or post comments or activity as anyone else.
+ */
+export async function contextFromAccessToken(token: string): Promise<ToolContext | null> {
+  const verified = await verifyAccessToken(token);
+  return verified ? contextFromClaims(verified.supabase, verified.claims) : null;
 }

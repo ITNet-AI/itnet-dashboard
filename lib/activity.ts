@@ -15,10 +15,10 @@ export type ActivityInput = {
 };
 
 /**
- * Who made the change, when it wasn't the person clicking. The agent route runs tools inside via.run("agent", …),
- * so every entry they log carries meta.via = "agent" without any tool knowing about it.
+ * Who made the change, when it wasn't the person clicking. The in-app Agent runs tools inside via.run("agent", …) and the
+ * Claude connector inside via.run("claude", …), so every entry they log says so without any tool knowing about it.
  */
-export const via = new AsyncLocalStorage<"agent">();
+export const via = new AsyncLocalStorage<"agent" | "claude">();
 
 /**
  * Appends to the activity log. The log is what the home feed reads, and what agents will read later.

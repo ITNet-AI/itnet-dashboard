@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { text, type ActionState } from "@/lib/action-utils";
 import { authLink, linkEmail, sendEmail } from "@/lib/email";
+import { safeNext } from "@/lib/safe-next";
 
 export async function signIn(_: ActionState, fd: FormData): Promise<ActionState> {
   const email = text(fd, "email");
@@ -13,7 +14,8 @@ export async function signIn(_: ActionState, fd: FormData): Promise<ActionState>
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "That email and password don't match. Try again or reset your password." };
-  redirect("/");
+  // Back to where sign-in interrupted, such as approving the Claude connector. Same-origin paths only.
+  redirect(safeNext(text(fd, "next"), process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"));
 }
 
 export async function signOut() {

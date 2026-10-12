@@ -6,10 +6,11 @@ import { requestPasswordReset, setPassword, signIn } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Input } from "@/components/ui/field";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(signIn, null);
   return (
     <form action={action} className="flex flex-col gap-4">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <Field label="Email" htmlFor="email">
         <Input id="email" name="email" type="email" autoComplete="email" required autoFocus />
       </Field>

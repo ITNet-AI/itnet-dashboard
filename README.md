@@ -32,6 +32,35 @@ Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel. If the key isn't scoped t
 `ANTHROPIC_WORKSPACE_ID`. Optional: `AGENT_MODEL` (default `claude-sonnet-5-5`).
 The route stops at 60 seconds and twelve tool steps per message, which fits Vercel's Hobby plan.
 
+## Use from Claude (MCP connector)
+
+People can add the dashboard to claude.ai (web, desktop or phone) as a custom connector, then ask or act from any Claude
+chat. It is the same set of tools as the Agent tab, served over MCP at `/api/mcp`, and it acts as the person who
+connected it: members get member tools, admins get everything, and every change shows in the activity feed marked
+"via Claude". The Agent tab's "Use from Claude" button shows the address, the steps, and a Disconnect list.
+
+How sign-in works: Supabase Auth is the OAuth 2.1 server. Claude registers itself, sends the person to
+`/oauth/consent` on this site, and gets a short-lived Supabase token after they press Allow. `/api/mcp` accepts only
+tokens Supabase issued to an OAuth client (signature, expiry, issuer, role and a `client_id` claim are all checked),
+so a dashboard session token or an API key is refused. The consent page only approves apps that send people back to
+`claude.ai` or `claude.com`.
+
+One-time setup in the Supabase dashboard:
+
+1. Authentication, URL Configuration: Site URL = `https://itnet-dashboard.vercel.app`.
+2. Authentication, OAuth Server: enable it, set the authorization path to `/oauth/consent`, and allow dynamic OAuth apps.
+
+Optional env vars: `MCP_OAUTH_CLIENT_IDS` (comma-separated) pins which OAuth clients may connect, and
+`MCP_DISABLED=1` switches the connector off without a deploy. Turning off the OAuth server in Supabase does the same.
+
+Things to know:
+
+- Supabase's OAuth server is in beta. Its tokens are not bound to `/api/mcp` as an audience, so the `client_id`
+  check stands in for that. Revisit if another OAuth app ever shares this Supabase project.
+- Removing someone's admin flag takes effect on their next call, because the profile is read on every request.
+- Someone could start a connection in their own Claude and send you the consent link. The page says to continue only
+  if you started it yourself; that warning is the only defence, so take it seriously.
+
 ## Access rules
 
 There is one role flag, `profiles.is_admin`. The database enforces it, not just the UI:

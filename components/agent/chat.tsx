@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { GLYPH, Icon } from "@/components/ui/icons";
 import type { ThreadSummary } from "@/lib/agent/threads";
+import { ConnectClaude } from "./connect-claude";
 import { Message } from "./message";
 import { ThreadList } from "./thread-list";
 
@@ -35,11 +36,13 @@ export function AgentChat({
   threads,
   user,
   configured,
+  serverUrl,
 }: {
   thread: { id: string; messages: UIMessage[] };
   threads: ThreadSummary[];
   user: Me;
   configured: boolean;
+  serverUrl: string;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
@@ -88,8 +91,9 @@ export function AgentChat({
             <h1 className="display">Agent</h1>
             <p className="text-ui text-ink-2">Ask, or tell it what to change. It works as you, with your access, and logs everything under your name.</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 md:hidden">
-            <Button variant="secondary" size="sm" onClick={() => setChatsOpen(true)}>
+          <div className="flex shrink-0 items-center gap-2">
+            <ConnectClaude serverUrl={serverUrl} />
+            <Button variant="secondary" size="sm" className="md:hidden" onClick={() => setChatsOpen(true)}>
               Chats
             </Button>
           </div>

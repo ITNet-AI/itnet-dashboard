@@ -4,8 +4,7 @@ import type { TablesInsert } from "@/lib/database.types";
 import { defineTool, fail, id, ok, optionalDate, optionalId } from "./define";
 
 // Costs are deliberately not written to the activity log: the log is visible to everyone, money is not.
-const cost = z
-  .object({
+const fields = z.object({
     name: z.string({ error: "Name what this is for." }).trim().min(1, "Name what this is for.").max(120),
     vendor: z.string().max(120).nullish(),
     amount: z.number({ error: "Enter an amount." }).nonnegative("Amounts can't be negative.").max(1e10).describe("INR"),
@@ -16,10 +15,15 @@ const cost = z
     project_id: optionalId.describe("Project this cost belongs to; omit for company-wide"),
     notes: z.string().max(4000).nullish(),
     active: z.boolean().default(true).describe("false = cancelled subscription, kept for history"),
-  })
-  .refine((v) => v.kind === "one_time" || (v.interval && v.next_renewal), {
+});
+
+/** Subscriptions need a cycle and a date. Applied to both inputs, which stay plain objects so they describe cleanly to agents. */
+const subscriptionRule = <T extends z.ZodType<{ kind: string; interval?: string | null; next_renewal?: string | null }>>(schema: T) =>
+  schema.refine((v) => v.kind === "one_time" || Boolean(v.interval && v.next_renewal), {
     message: "Subscriptions need a billing cycle and a renewal date.",
   });
+
+const cost = subscriptionRule(fields);
 
 /** A one-time cost has no cycle; a subscription has no single paid date. */
 function toRow(v: z.output<typeof cost>): TablesInsert<"costs"> {
@@ -42,7 +46,7 @@ export const updateCost = defineTool({
   name: "update_cost",
   description: "Replace a cost's details. Send the full cost, not just the changed fields. Admin only.",
   admin: true,
-  input: z.object({ id }).and(cost),
+  input: subscriptionRule(fields.extend({ id })),
   async run({ supabase }, { id, ...rest }) {
     const { data, error } = await supabase.from("costs").update(toRow(rest)).eq("id", id).select("id");
     if (error) return fail(error.message);

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AgentChat } from "@/components/agent/chat";
 import { getThread, listThreads } from "@/lib/agent/threads";
 import { getCurrentUser } from "@/lib/auth";
+import { mcpConfig } from "@/lib/mcp/config";
 
 export const metadata: Metadata = { title: "Agent" };
 
@@ -17,6 +18,7 @@ export default async function AgentThreadPage({ params }: PageProps<"/agent/[id]
       threads={threads}
       user={{ full_name: user.full_name, email: user.email, is_admin: user.is_admin }}
       configured={Boolean(process.env.ANTHROPIC_API_KEY)}
+      serverUrl={mcpConfig().resource}
     />
   );
 }
