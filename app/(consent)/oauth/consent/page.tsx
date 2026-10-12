@@ -16,11 +16,12 @@ const SCOPE_WORDS: Record<string, string> = {
   profile: "See your name",
 };
 
-function Problem({ title, children }: { title: string; children: React.ReactNode }) {
+function Problem({ title, children, reason }: { title: string; children: React.ReactNode; reason?: string }) {
   return (
     <div className="flex flex-col gap-3">
       <h1 className="display">{title}</h1>
       <p className="text-pretty text-body text-ink-2">{children}</p>
+      {reason ? <p className="text-meta text-ink-3">Reason: {reason}</p> : null}
       <Link href="/" className="text-ui font-semibold text-accent hover:underline">
         Go to the dashboard
       </Link>
@@ -44,8 +45,15 @@ export default async function ConsentPage({ searchParams }: PageProps<"/oauth/co
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(id);
-  if (error || !data)
-    return <Problem title="This link isn't valid">It may have expired or already been used. Start connecting again from Claude.</Problem>;
+  if (error || !data) {
+    // Supabase's reason, in the logs and on the page, so a failed connection can be told apart from an expired link.
+    console.error("oauth consent: details failed", JSON.stringify({ user: user.id, code: error?.code, status: error?.status, message: error?.message }));
+    return (
+      <Problem title="This link isn't valid" reason={error ? `${error.message}${error.code ? ` (${error.code})` : ""}` : "no details returned"}>
+        It may have expired or already been used. Start connecting again from Claude.
+      </Problem>
+    );
+  }
   // Already approved before, for these scopes: carry straight on.
   if ("redirect_url" in data) redirect(data.redirect_url);
 
