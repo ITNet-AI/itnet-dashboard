@@ -146,7 +146,14 @@ export function ConsentInBrowser({ id, person, serverReason }: { id: string; per
       .auth.oauth.getAuthorizationDetails(id)
       .then(({ data, error }) => {
         if (!live) return;
-        if (error || !data) return setState({ reason: `${error?.message ?? "no details returned"} (server: ${serverReason})` });
+        if (error || !data) {
+          const names = document.cookie
+            .split(";")
+            .map((c) => c.trim().split("=")[0])
+            .filter((n) => n.startsWith("sb-"))
+            .map((n) => n.replace(/^sb-[a-z0-9]+-/, ""));
+          return setState({ reason: `${error?.message ?? "no details returned"} | browser cookies ${names.join(",") || "none"} | server: ${serverReason}` });
+        }
         if ("redirect_url" in data) {
           if (trustedRedirect(data.redirect_url)) window.location.replace(data.redirect_url);
           else setState({ reason: "already decided for an app that isn't Claude" });
