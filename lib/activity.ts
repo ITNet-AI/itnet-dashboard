@@ -1,4 +1,5 @@
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/database.types";
 
@@ -14,10 +15,17 @@ export type ActivityInput = {
 };
 
 /**
+ * Who made the change, when it wasn't the person clicking. The agent route runs tools inside via.run("agent", …),
+ * so every entry they log carries meta.via = "agent" without any tool knowing about it.
+ */
+export const via = new AsyncLocalStorage<"agent">();
+
+/**
  * Appends to the activity log. The log is what the home feed reads, and what agents will read later.
  * Failure to log never fails the user's action.
  */
 export async function logActivity(supabase: Supabase, input: ActivityInput) {
-  const { error } = await supabase.from("activity").insert({ ...input, meta: input.meta ?? {} });
+  const meta = via.getStore() ? { ...((input.meta ?? {}) as Record<string, Json>), via: via.getStore()! } : (input.meta ?? {});
+  const { error } = await supabase.from("activity").insert({ ...input, meta });
   if (error) console.error("activity log failed", error.message);
 }

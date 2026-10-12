@@ -29,6 +29,8 @@ export async function proxy(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
 
   if (!signedIn && !isPublic) {
+    // A fetch from the app wants an answer it can show, not the login page's HTML.
+    if (path.startsWith("/api/")) return NextResponse.json({ error: "Your session has ended. Sign in again." }, { status: 401 });
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

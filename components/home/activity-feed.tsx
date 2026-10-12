@@ -19,7 +19,7 @@ export function ActivityFeed({ items, showProject = true, empty }: { items: Acti
     <ol className="flex flex-col">
       {items.map((item) => {
         const link = href(item);
-        const meta = (item.meta ?? {}) as { excerpt?: string };
+        const meta = (item.meta ?? {}) as { excerpt?: string; via?: string };
         const body = (
           <>
             <span className="text-ink">
@@ -29,6 +29,7 @@ export function ActivityFeed({ items, showProject = true, empty }: { items: Acti
             <span className="text-meta text-ink-3">
               {showProject && item.project ? `${item.project.name}, ` : ""}
               <time dateTime={item.created_at}>{ago(item.created_at)}</time>
+              {meta.via === "agent" ? ", via the agent" : ""}
             </span>
           </>
         );

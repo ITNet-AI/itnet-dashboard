@@ -17,6 +17,12 @@ type Item = { href: string; label: string; icon: ReactNode };
 type NavProject = { id: string; name: string; health: Health };
 
 const ICONS = {
+  agent: (
+    <>
+      <path d="M8 2v3M8 11v3M2 8h3M11 8h3" />
+      <path d="M8 5.5 9.2 6.8 10.5 8 9.2 9.2 8 10.5 6.8 9.2 5.5 8l1.3-1.2z" />
+    </>
+  ),
   home: (
     <>
       <path d="M2.5 7.5 8 3l5.5 4.5" />
@@ -61,6 +67,7 @@ const ICONS = {
 };
 
 const MAIN: Item[] = [
+  { href: "/agent", label: "Agent", icon: ICONS.agent },
   { href: "/", label: "Home", icon: ICONS.home },
   { href: "/projects", label: "Projects", icon: ICONS.projects },
   { href: "/tasks", label: "Tasks", icon: ICONS.tasks },

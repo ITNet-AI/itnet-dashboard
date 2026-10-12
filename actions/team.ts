@@ -4,7 +4,11 @@ import { run, text, toState, type ActionState } from "@/lib/action-utils";
 import * as team from "@/lib/tools/team";
 
 export async function inviteMember(_: ActionState, fd: FormData): Promise<ActionState> {
-  const result = await run(team.inviteMember, { full_name: text(fd, "full_name"), email: text(fd, "email") });
+  const result = await run(team.inviteMember, {
+    full_name: text(fd, "full_name"),
+    email: text(fd, "email"),
+    is_admin: fd.get("is_admin") === "on",
+  });
   return toState(result, result.ok ? `Invite sent to ${result.data.email}.` : undefined);
 }
 

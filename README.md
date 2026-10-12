@@ -14,6 +14,24 @@ Next.js 16, Tailwind 4, Supabase (Postgres, auth, row level security).
 
 Every task opens at a stable link (`/projects/<id>?task=<id>`), and every change is written to an `activity` table. Both are there so agents can read, update and link to the same data later.
 
+## Agent
+
+The first tab is a chat with Claude that works through the same tools as the app. Ask "what's overdue?" or say
+"add a task to Fleet tracking app for Dev, due Friday" and it looks up the ids, makes the change, and links it.
+
+- It acts as you. Tools run with your session under row level security, and admin-only tools are not even offered to
+  members, so it can do exactly what you can and nothing more. Everything it changes is in the activity feed under
+  your name, marked "via the agent".
+- Deleting anything and changing admin access wait for you to press Delete or Approve in the chat. Approval requests
+  are signed on the server, so a client can't forge one.
+- Chats are saved per person in `agent_threads` and nobody else can read them, admins included.
+- Text in tasks, comments and notes reaches the model as data. Someone could write an instruction there; the agent is
+  told to ignore it, and even if it didn't, it could only do what you could, with deletes still waiting for a click.
+
+Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel. If the key isn't scoped to a workspace, also set
+`ANTHROPIC_WORKSPACE_ID`. Optional: `AGENT_MODEL` (default `claude-sonnet-5-5`).
+The route stops at 60 seconds and twelve tool steps per message, which fits Vercel's Hobby plan.
+
 ## Access rules
 
 There is one role flag, `profiles.is_admin`. The database enforces it, not just the UI:
@@ -40,7 +58,7 @@ nothing that needs admin.
 1. **Secret key.** Supabase dashboard, Project settings, API keys. Copy a secret key into `.env.local` as `SUPABASE_SECRET_KEY`. It is server only and never committed.
 2. **Turn off public sign-ups.** Authentication, Sign In / Providers, Email: switch off "Allow new users to sign up".
 3. **Redirect URLs.** Authentication, URL Configuration: set Site URL to `http://localhost:3000` and add `http://localhost:3000/**` to Redirect URLs. Add your production domain when you deploy.
-4. **Email delivery.** Supabase's built-in mailer only reaches a handful of addresses per hour. Create a Resend account, verify your domain, and paste its SMTP details into Authentication, Emails, SMTP Settings.
+4. **Email delivery.** The app sends invite and password-reset emails itself through Resend, from `info@itnetai.com`. Verify `itnetai.com` in Resend, then put a sending key in `.env.local` (and Vercel) as `RESEND_API_KEY`.
 5. **First admin.**
    ```
    pnpm install
@@ -51,10 +69,6 @@ nothing that needs admin.
    ```
    pnpm dev
    ```
-
-Optional: in Authentication, Emails, change the "Reset password" template's link to
-`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/set-password`.
-Then reset links work even when opened on a different device from the one that asked for them.
 
 ## Locked out
 

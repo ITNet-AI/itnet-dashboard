@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { text, type ActionState } from "@/lib/action-utils";
+import { authLink, linkEmail, sendEmail } from "@/lib/email";
 
 export async function signIn(_: ActionState, fd: FormData): Promise<ActionState> {
   const email = text(fd, "email");
@@ -24,13 +25,18 @@ export async function signOut() {
 export async function requestPasswordReset(_: ActionState, fd: FormData): Promise<ActionState> {
   const email = text(fd, "email");
   if (!email) return { error: "Enter the email you sign in with." };
-  const supabase = await createClient();
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${site}/auth/confirm?next=/set-password`,
-  });
-  if (error) return { error: error.message };
-  // Same message whether or not the account exists.
+  const link = await authLink("recovery", email.toLowerCase());
+  // No link means no such account; say nothing different, so this can't be used to probe for accounts.
+  if (link.error === undefined) {
+    const mail = linkEmail(
+      "Reset your ITnet password",
+      ["Someone asked to reset the password for this account. If it was you, open the link to set a new one."],
+      "Set a new password",
+      link.url,
+    );
+    const { error } = await sendEmail(email, mail.subject, mail.html, mail.text);
+    if (error) return { error };
+  }
   return { ok: true, message: "If that email has an account, a reset link is on its way." };
 }
 

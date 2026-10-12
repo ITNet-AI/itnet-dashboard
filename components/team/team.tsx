@@ -38,6 +38,10 @@ export function InviteForm({ canInvite }: { canInvite: boolean }) {
           {pending ? "Sending…" : "Send invite"}
         </Button>
       </div>
+      <label className="flex w-fit cursor-pointer items-center gap-2 text-ui text-ink-2">
+        <input type="checkbox" name="is_admin" disabled={!canInvite} className="size-4 accent-[var(--accent)]" />
+        Make them an admin
+      </label>
       <FormError message={state?.error} />
       {state?.ok ? <p className="text-ui text-good">{state.message}</p> : null}
     </form>
