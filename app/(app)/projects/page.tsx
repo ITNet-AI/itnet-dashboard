@@ -9,13 +9,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { PERSON, listClientOptions, listPeople } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
-import { projectHealth, type Health } from "@/lib/health";
+import { isWorkDone, projectHealth, type Health } from "@/lib/health";
 
 export const metadata: Metadata = { title: "Projects" };
 
-const FILTERS = ["active", "paused", "done", "all"] as const;
+const FILTERS = ["active", "paused", "done", "billing", "paid", "all"] as const;
 type Filter = (typeof FILTERS)[number];
-const LABELS: Record<Filter, string> = { active: "Active", paused: "Paused", done: "Done", all: "All" };
+const LABELS: Record<Filter, string> = { active: "Active", paused: "Paused", done: "Done", billing: "Billing", paid: "Paid", all: "All" };
 const EDGE: Record<Health, string> = { late: "border-l-crit", at_risk: "border-l-warn", on_track: "border-l-good" };
 
 export default async function ProjectsPage({ searchParams }: PageProps<"/projects">) {
@@ -81,7 +81,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                         <PersonName person={p.lead} />
                       </span>
                       <Progress done={done} total={p.tasks.length} tone={health ?? "accent"} />
-                      <span className="text-ui">{p.due_date ? <Due date={p.due_date} done={p.status === "done"} /> : <span className="text-ink-3">None</span>}</span>
+                      <span className="text-ui">{p.due_date ? <Due date={p.due_date} done={isWorkDone(p.status)} /> : <span className="text-ink-3">None</span>}</span>
                       <ProjectStatus status={p.status} />
                     </Link>
                   </li>

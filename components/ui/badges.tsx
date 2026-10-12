@@ -1,7 +1,7 @@
 import type { Enums } from "@/lib/database.types";
 import { dateLabel, dueInfo } from "@/lib/format";
 
-type Tone = "neutral" | "accent" | "warn" | "good" | "crit";
+type Tone = "neutral" | "accent" | "warn" | "good" | "crit" | "plum";
 
 const tones: Record<Tone, { pill: string; dot: string }> = {
   neutral: { pill: "bg-sunk text-ink-2", dot: "border border-ink-3 bg-transparent" },
@@ -9,6 +9,7 @@ const tones: Record<Tone, { pill: string; dot: string }> = {
   warn: { pill: "bg-warn-soft text-warn", dot: "bg-warn" },
   good: { pill: "bg-good-soft text-good", dot: "bg-good" },
   crit: { pill: "bg-crit-soft text-crit", dot: "bg-crit" },
+  plum: { pill: "bg-plum-soft text-plum", dot: "bg-plum" },
 };
 
 export function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
@@ -24,6 +25,8 @@ export const PROJECT_STATUS: Record<Enums<"project_status">, { label: string; to
   active: { label: "Active", tone: "accent" },
   paused: { label: "Paused", tone: "warn" },
   done: { label: "Done", tone: "neutral" },
+  billing: { label: "Billing", tone: "plum" },
+  paid: { label: "Paid", tone: "good" },
 };
 
 export function ProjectStatus({ status }: { status: Enums<"project_status"> }) {

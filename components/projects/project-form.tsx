@@ -17,7 +17,7 @@ export function ProjectForm({
   currentUserId,
   trigger = "New project",
 }: {
-  project?: Pick<Tables<"projects">, "id" | "name" | "description" | "client_id" | "lead_id" | "due_date" | "status">;
+  project?: Pick<Tables<"projects">, "id" | "name" | "description" | "client_id" | "lead_id" | "due_date" | "status" | "fee">;
   people: Person[];
   clients: { id: string; name: string }[];
   defaultClientId?: string;
@@ -100,7 +100,12 @@ export function ProjectForm({
                 <option value="active">Active</option>
                 <option value="paused">Paused</option>
                 <option value="done">Done</option>
+                <option value="billing">Billing</option>
+                <option value="paid">Paid</option>
               </Select>
+            </Field>
+            <Field label="Fee" htmlFor="project-fee" hint="What the client pays for the project. Needed before it can go to billing.">
+              <Input id="project-fee" name="fee" inputMode="numeric" placeholder="₹" defaultValue={project?.fee ?? ""} />
             </Field>
           </div>
           <Field label="Brief" htmlFor="project-description">

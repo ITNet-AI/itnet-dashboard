@@ -13,6 +13,8 @@ import { Due, ProjectStatus } from "@/components/ui/badges";
 import { Section } from "@/components/ui/page";
 import { getCurrentUser } from "@/lib/auth";
 import { describeCost } from "@/lib/costs";
+import { money } from "@/lib/format";
+import { isWorkDone } from "@/lib/health";
 import { PERSON, getProject, getTaskDetail, listActivity, listClientOptions, listPeople, listTasks } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
@@ -94,8 +96,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           </div>
           <div className="flex items-center gap-2">
             <dt className="text-ink-3">Due</dt>
-            <dd>{project.due_date ? <Due date={project.due_date} done={project.status === "done"} /> : "No date"}</dd>
+            <dd>{project.due_date ? <Due date={project.due_date} done={isWorkDone(project.status)} /> : "No date"}</dd>
           </div>
+          {user.is_admin && project.fee != null ? (
+            <div className="flex items-center gap-2">
+              <dt className="text-ink-3">Fee</dt>
+              <dd className="num">{money(Number(project.fee))}</dd>
+            </div>
+          ) : null}
           <div className="flex items-center gap-2">
             <dt className="sr-only">Status</dt>
             <dd>

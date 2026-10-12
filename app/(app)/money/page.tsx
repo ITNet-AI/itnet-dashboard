@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Collect } from "@/components/costs/collect";
 import { CostTables } from "@/components/costs/cost-tables";
 import { Stats } from "@/components/home/stats";
 import { PageHeader } from "@/components/ui/page";
@@ -14,10 +15,19 @@ export default async function MoneyPage() {
   await requireAdmin();
   const supabase = await createClient();
   const today = todayISO();
-  const [{ data: costs }, { data: projects }] = await Promise.all([
+  const [{ data: costs }, { data: projects }, { data: billed }] = await Promise.all([
     supabase.from("costs").select("*, project:projects(id, name)"),
     supabase.from("projects").select("id, name").order("name"),
+    supabase
+      .from("projects")
+      .select("id, name, status, fee, billed_on, paid_on, client:clients(id, name)")
+      .in("status", ["billing", "paid"])
+      .order("billed_on", { ascending: true, nullsFirst: false }),
   ]);
+  const billing = (billed ?? []).filter((p) => p.status === "billing");
+  const paidThisYear = (billed ?? [])
+    .filter((p) => p.status === "paid" && p.paid_on && p.paid_on >= today.slice(0, 4) + "-01-01")
+    .sort((a, b) => b.paid_on!.localeCompare(a.paid_on!));
   const { described, runRate, spentThisMonth, renewals } = summarize(costs ?? [], today);
   const { start } = monthBounds(today);
   const oneTimeThisYear = described
@@ -45,6 +55,7 @@ export default async function MoneyPage() {
             { label: `One-time in ${today.slice(0, 4)}`, value: moneyRound(oneTimeThisYear) },
           ]}
         />
+        <Collect billing={billing} paid={paidThisYear} />
         <CostTables costs={described} projects={projects ?? []} />
       </div>
     </>

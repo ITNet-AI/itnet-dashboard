@@ -12,7 +12,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { PERSON, listClientOptions, listPeople } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
-import { projectHealth } from "@/lib/health";
+import { isWorkDone, projectHealth } from "@/lib/health";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -98,7 +98,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                       total={p.tasks.length}
                       tone={p.status === "active" ? projectHealth(p, today).health : "accent"}
                     />
-                    <span className="text-ui">{p.due_date ? <Due date={p.due_date} done={p.status === "done"} /> : <span className="text-ink-3">None</span>}</span>
+                    <span className="text-ui">{p.due_date ? <Due date={p.due_date} done={isWorkDone(p.status)} /> : <span className="text-ink-3">None</span>}</span>
                     <ProjectStatus status={p.status} />
                   </Link>
                 </li>

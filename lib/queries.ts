@@ -26,7 +26,7 @@ export async function listClientOptions() {
 
 export async function listProjectOptions() {
   const supabase = await createClient();
-  const { data } = await supabase.from("projects").select("id, name, status").neq("status", "done").order("name");
+  const { data } = await supabase.from("projects").select("id, name, status").in("status", ["active", "paused"]).order("name");
   return data ?? [];
 }
 
@@ -122,7 +122,7 @@ export const getProject = cache(async (id: string) => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("projects")
-    .select(`id, name, description, status, due_date, client_id, lead_id, client:clients(id, name), lead:profiles(${PERSON})`)
+    .select(`id, name, description, status, due_date, fee, client_id, lead_id, client:clients(id, name), lead:profiles(${PERSON})`)
     .eq("id", id)
     .maybeSingle();
   return data;

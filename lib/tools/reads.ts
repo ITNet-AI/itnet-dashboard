@@ -4,7 +4,7 @@ import { summarize } from "@/lib/costs";
 import { todayISO } from "@/lib/dates";
 import { projectHealth } from "@/lib/health";
 import { PERSON } from "@/lib/queries";
-import { defineTool, fail, id, ok, optionalDate, taskStatus } from "./define";
+import { defineTool, fail, id, ok, optionalDate, projectStatus, taskStatus } from "./define";
 
 // Reads for agents: enough to find ids and answer "what's on my plate". Each runs as the caller, so RLS still applies.
 
@@ -38,7 +38,7 @@ export const listProjects = defineTool({
   description: "Projects with client, lead, task counts and health (late, at_risk, on_track) and the reason for it.",
   readOnly: true,
   input: z.object({
-    status: z.enum(["active", "paused", "done"]).optional().describe("Omit for all"),
+    status: projectStatus.optional().describe("Omit for all"),
     lead_id: id.optional(),
     client_id: id.optional(),
   }),
@@ -73,7 +73,7 @@ export const getProject = defineTool({
     const [project, tasks, comments] = await Promise.all([
       supabase
         .from("projects")
-        .select(`id, name, status, due_date, description, created_at, client:clients(id, name), lead:profiles(${PERSON})`)
+        .select(`id, name, status, due_date, fee, billed_on, paid_on, description, created_at, client:clients(id, name), lead:profiles(${PERSON})`)
         .eq("id", input.id)
         .maybeSingle(),
       supabase.from("tasks").select(TASK).eq("project_id", input.id).order("status").order("position"),

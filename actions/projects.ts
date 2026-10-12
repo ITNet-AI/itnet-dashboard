@@ -16,8 +16,20 @@ function read(fd: FormData) {
     new_client_name: isNew ? (text(fd, "new_client_name") ?? "") : undefined,
     lead_id: text(fd, "lead_id"),
     due_date: text(fd, "due_date"),
+    fee: fee(fd),
     status: opt(fd, "status"),
   };
+}
+
+/** "₹1,80,000" or "180000" as a number; empty clears it. */
+function fee(fd: FormData) {
+  const raw = text(fd, "fee")?.replace(/[₹,\s]/g, "");
+  return raw == null ? null : Number(raw);
+}
+
+/** Money page: the client has paid. */
+export async function collectPayment(id: string): Promise<ActionState> {
+  return toState(await run(projects.collectPayment, { id }));
 }
 
 export async function createProject(_: ActionState, fd: FormData): Promise<ActionState> {

@@ -14,7 +14,9 @@ begin
     ('de000002-0000-4000-8000-000000000001', 'de000001-0000-4000-8000-000000000001', 'Fleet tracking app', 'Driver app and dispatcher dashboard for 400 trucks. Live location, trip history, check-ins.', 'active', me, d + 22),
     ('de000002-0000-4000-8000-000000000002', 'de000001-0000-4000-8000-000000000002', 'Tourism site rebuild', 'New marketing site with destination pages and an events calendar in English and Malayalam.', 'active', me, d + 5),
     ('de000002-0000-4000-8000-000000000003', null, 'Brand refresh', 'New logo lockups, type and a short brand guide for itnet.', 'paused', me, null),
-    ('de000002-0000-4000-8000-000000000004', 'de000001-0000-4000-8000-000000000003', 'Clinic booking MVP', 'Appointment booking with SMS reminders for three clinics.', 'done', me, d - 12);
+    ('de000002-0000-4000-8000-000000000004', 'de000001-0000-4000-8000-000000000003', 'Clinic booking MVP', 'Appointment booking with SMS reminders for three clinics.', 'billing', me, d - 12);
+  -- The clinic work is finished and the invoice is out; Money shows it under Payments.
+  update public.projects set fee = 180000, billed_on = d - 9 where id = 'de000002-0000-4000-8000-000000000004';
 
   insert into public.tasks (id, project_id, title, description, status, assignee_id, created_by, due_date, position) values
     ('de000003-0000-4000-8000-000000000001', 'de000002-0000-4000-8000-000000000001', 'Driver onboarding flow, final copy', 'Rahul wants the language toggle on the first screen.', 'todo', me, me, d + 3, 1024),

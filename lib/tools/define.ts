@@ -65,6 +65,8 @@ export const id = z.uuid();
 export const optionalId = z.uuid().nullish();
 export const optionalDate = z.iso.date().nullish().describe("YYYY-MM-DD");
 export const taskStatus = z.enum(["todo", "doing", "done"]);
+/** active → paused/done → billing (fee set, client owes) → paid. */
+export const projectStatus = z.enum(["active", "paused", "done", "billing", "paid"]);
 
 export function quote(s: string) {
   return `“${s}”`;

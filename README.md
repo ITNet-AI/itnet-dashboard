@@ -6,10 +6,10 @@ Next.js 16, Tailwind 4, Supabase (Postgres, auth, row level security).
 ## What's in it
 
 - **Home.** Your tasks by due date, projects you lead, team activity. Admins also see headline numbers, every active project, and renewals in the next 30 days.
-- **Projects.** List with progress. Each project has a lead, a board (To do, In progress, Done), a discussion thread, and, for admins, its costs.
+- **Projects.** List with progress. Each project has a lead, a board (To do, In progress, Done), a discussion thread, and, for admins, its costs. When the work is done, a project moves to Billing with a fee, then to Paid once the money is in.
 - **Tasks.** Everything assigned to you, created by you, or everyone's. Anyone can assign anyone.
 - **Clients.** Contacts, notes, and their projects.
-- **Money** (admin). Subscriptions and one-time expenses in rupees. Renewal dates roll forward on their own.
+- **Money** (admin). Projects awaiting payment with a Collected button, then subscriptions and one-time expenses in rupees. Renewal dates roll forward on their own.
 - **Team** (admin). Invite people by email and choose who is an admin.
 
 Every task opens at a stable link (`/projects/<id>?task=<id>`), and every change is written to an `activity` table. Both are there so agents can read, update and link to the same data later.

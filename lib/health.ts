@@ -31,3 +31,8 @@ export function projectHealth(p: ProjectLike, today: string): { health: Health; 
 }
 
 export const QUIET_DAYS = 5;
+
+/** Done, billing and paid all mean the work is finished; only the money is still moving. */
+export function isWorkDone(status: "active" | "paused" | "done" | "billing" | "paid") {
+  return status !== "active" && status !== "paused";
+}
