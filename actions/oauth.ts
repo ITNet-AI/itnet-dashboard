@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { trustedRedirect } from "@/lib/mcp/config";
-import { createClient } from "@/lib/supabase/server";
+import { createReadyClient } from "@/lib/supabase/server";
 
 const ID = /^[A-Za-z0-9_-]{8,128}$/;
 
@@ -17,7 +17,7 @@ export async function approveConsent(fd: FormData) {
   const id = String(fd.get("authorization_id") ?? "");
   if (!ID.test(id)) redirect("/oauth/consent?error=invalid");
 
-  const supabase = await createClient();
+  const supabase = await createReadyClient();
   const { data: details, error: detailsError } = await supabase.auth.oauth.getAuthorizationDetails(id);
   if (detailsError || !details) redirect("/oauth/consent?error=invalid");
   if ("redirect_url" in details) redirect(details.redirect_url);
@@ -34,7 +34,7 @@ export async function denyConsent(fd: FormData) {
   const id = String(fd.get("authorization_id") ?? "");
   if (!ID.test(id)) redirect("/oauth/consent?error=invalid");
 
-  const supabase = await createClient();
+  const supabase = await createReadyClient();
   const { data, error } = await supabase.auth.oauth.denyAuthorization(id, { skipBrowserRedirect: true });
   if (error || !data) redirect("/");
   redirect(data.redirect_url);
@@ -43,7 +43,7 @@ export async function denyConsent(fd: FormData) {
 /** Apps the person has connected, for the Disconnect list. Empty when the OAuth server is off. */
 export async function listConnections() {
   await getCurrentUser();
-  const supabase = await createClient();
+  const supabase = await createReadyClient();
   const { data } = await supabase.auth.oauth.listGrants();
   return (data ?? []).map((g) => ({ clientId: g.client.id, name: g.client.name || "Unnamed app", grantedAt: g.granted_at }));
 }
@@ -51,7 +51,7 @@ export async function listConnections() {
 /** Disconnect: revokes consent and the app's refresh tokens, so it has to ask again. Access tokens lapse within the hour. */
 export async function disconnect(clientId: string) {
   await getCurrentUser();
-  const supabase = await createClient();
+  const supabase = await createReadyClient();
   const { error } = await supabase.auth.oauth.revokeGrant({ clientId });
   revalidatePath("/agent", "layout");
   return error ? { error: error.message } : { ok: true };

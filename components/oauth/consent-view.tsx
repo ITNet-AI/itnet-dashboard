@@ -51,7 +51,10 @@ export function ConsentView({ details, person, mode }: { details: ConsentDetails
 
   function decide(allow: boolean) {
     start(async () => {
-      const auth = createClient().auth.oauth;
+      const client = createClient();
+      // Settle the session first; the OAuth helpers don't wait for the client's start-up.
+      await client.auth.getSession();
+      const auth = client.auth.oauth;
       const { data, error } = allow
         ? await auth.approveAuthorization(details.authorization_id, { skipBrowserRedirect: true })
         : await auth.denyAuthorization(details.authorization_id, { skipBrowserRedirect: true });
@@ -142,8 +145,11 @@ export function ConsentInBrowser({ id, person, serverReason }: { id: string; per
 
   useEffect(() => {
     let live = true;
-    createClient()
-      .auth.oauth.getAuthorizationDetails(id)
+    const client = createClient();
+    // Settle the session first; the OAuth helpers don't wait for the client's start-up.
+    client.auth
+      .getSession()
+      .then(() => client.auth.oauth.getAuthorizationDetails(id))
       .then(({ data, error }) => {
         if (!live) return;
         if (error || !data) {

@@ -22,3 +22,15 @@ export async function createClient() {
     },
   );
 }
+
+/**
+ * A client whose session has finished loading. supabase-js's OAuth server helpers (getAuthorizationDetails, approve,
+ * deny, grants) read the session without waiting for the client's start-up, which also refreshes the session; when a
+ * browser sends more than one auth cookie, that race reads no session at all ("Auth session missing!"). getSession()
+ * does wait, so calling it first settles the session before those helpers run.
+ */
+export async function createReadyClient() {
+  const supabase = await createClient();
+  await supabase.auth.getSession();
+  return supabase;
+}

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ConsentInBrowser, ConsentView, Problem } from "@/components/oauth/consent-view";
 import { getCurrentUser } from "@/lib/auth";
 import { displayName } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createReadyClient } from "@/lib/supabase/server";
 import { cookies, headers } from "next/headers";
 
 export const metadata: Metadata = { title: "Connect Claude" };
@@ -37,7 +37,7 @@ export default async function ConsentPage({ searchParams }: PageProps<"/oauth/co
   if (problem || !/^[A-Za-z0-9_-]{8,128}$/.test(id))
     return <Problem title="This link isn't valid">It may have expired or already been used. Start connecting again from Claude.</Problem>;
 
-  const supabase = await createClient();
+  const supabase = await createReadyClient();
   const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(id);
   if (error || !data) {
     const reason = error ? `${error.message}${error.code ? ` (${error.code})` : ""}` : "no details returned";
